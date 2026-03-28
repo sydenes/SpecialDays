@@ -1,6 +1,7 @@
 import dotenv from "dotenv";
 import { Pool } from "pg";
 import { fileURLToPath } from "url";
+import { migratePagePhotosInline } from "./src/db/migrations/pagePhotosInline.js";
 
 // Root dizindeki .env dosyasini oku.
 dotenv.config({ path: fileURLToPath(new URL("../.env", import.meta.url)) });
@@ -124,19 +125,19 @@ DROP TRIGGER IF EXISTS trg_users_updated_at ON users;
 CREATE TRIGGER trg_users_updated_at
 BEFORE UPDATE ON users
 FOR EACH ROW
-EXECUTE FUNCTION set_updated_at();
+EXECUTE PROCEDURE set_updated_at();
 
 DROP TRIGGER IF EXISTS trg_templates_updated_at ON templates;
 CREATE TRIGGER trg_templates_updated_at
 BEFORE UPDATE ON templates
 FOR EACH ROW
-EXECUTE FUNCTION set_updated_at();
+EXECUTE PROCEDURE set_updated_at();
 
 DROP TRIGGER IF EXISTS trg_special_pages_updated_at ON special_pages;
 CREATE TRIGGER trg_special_pages_updated_at
 BEFORE UPDATE ON special_pages
 FOR EACH ROW
-EXECUTE FUNCTION set_updated_at();
+EXECUTE PROCEDURE set_updated_at();
 
 INSERT INTO templates (code, name, category, preview_image_url, config_schema)
 VALUES (
@@ -250,6 +251,7 @@ async function main() {
   try {
     console.log("DB init basliyor...");
     await pool.query(SQL);
+    await migratePagePhotosInline(pool);
     console.log("DB init tamamlandi.");
     await pool.end();
   } catch (err) {

@@ -7,6 +7,7 @@ export type SpecialPage = {
   title: string;
   eventDate: Date | null;
   mainText: string | null;
+  settings: Record<string, unknown>;
 };
 
 export type SpecialPageAdmin = {
@@ -48,9 +49,10 @@ export const specialPagesEntity = {
       t.category AS "templateCategory",
       title,
       event_date AS "eventDate",
-      main_text AS "mainText"
-    FROM special_pages
-    JOIN templates t ON t.id = special_pages.template_id
+      main_text AS "mainText",
+      sp.settings AS "settings"
+    FROM special_pages sp
+    JOIN templates t ON t.id = sp.template_id
   `,
 };
 
@@ -63,6 +65,7 @@ export function mapSpecialPageRow(row: {
   title: string;
   eventDate: Date | null;
   mainText: string | null;
+  settings?: Record<string, unknown> | null;
 }): SpecialPage {
   return {
     slug: row.slug,
@@ -73,6 +76,7 @@ export function mapSpecialPageRow(row: {
     title: row.title,
     eventDate: row.eventDate,
     mainText: row.mainText,
+    settings: row.settings && typeof row.settings === "object" ? row.settings : {},
   };
 }
 

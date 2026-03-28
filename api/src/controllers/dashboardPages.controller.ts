@@ -9,6 +9,12 @@ import {
   type UpdatePageInput,
 } from "../db/queries/dashboardPages.queries.js";
 import { getPageContentByPageId, upsertPageContentByPageId } from "../db/queries/pageContent.queries.js";
+import {
+  countPhotosForPage,
+  deletePagePhoto as deleteStoredPagePhoto,
+  getPageTemplatePhotoLimit,
+  insertInlinePagePhoto,
+} from "../db/queries/pagePhotos.queries.js";
 
 function getQueryParamString(req: Request, key: string): string | null {
   const v = (req.query as any)?.[key];
@@ -125,35 +131,45 @@ export async function upsertPageContent(req: Request, res: Response, next: NextF
     const id = normalizeParamToString(req.params.id);
     if (!id) return res.status(400).json({ error: "id is required" });
 
-    const body = req.body as unknown as {
-      photos?: unknown;
-      texts?: unknown;
-      themeColor?: unknown;
-      musicUrl?: unknown;
-    };
+    const body = req.body as Record<string, unknown>;
+    const hasPhotos = Object.prototype.hasOwnProperty.call(body, "photos");
+    const hasTexts = Object.prototype.hasOwnProperty.call(body, "texts");
 
-    const photos = Array.isArray(body.photos) ? body.photos : [];
-    const texts = Array.isArray(body.texts) ? body.texts : [];
+    if (hasPhotos && !Array.isArray(body.photos)) {
+      return res.status(400).json({ error: "photos must be an array when provided" });
+    }
+    if (hasTexts && !Array.isArray(body.texts)) {
+      return res.status(400).json({ error: "texts must be an array when provided" });
+    }
+
     const themeColor = typeof body.themeColor === "string" ? body.themeColor.trim() : null;
     const musicUrl = typeof body.musicUrl === "string" ? body.musicUrl.trim() : null;
 
-    // Basit input temizleme
-    const normalizedPhotos = photos
-      .map((p: any, idx) => ({
-        fileUrl: typeof p?.fileUrl === "string" ? p.fileUrl.trim() : "",
-        thumbnailUrl: typeof p?.thumbnailUrl === "string" ? p.thumbnailUrl.trim() : null,
-        caption: typeof p?.caption === "string" ? p.caption.trim() : null,
-        sortOrder: typeof p?.sortOrder === "number" ? p.sortOrder : idx + 1,
-      }))
-      .filter((p) => p.fileUrl.length > 0);
+    const photos = hasPhotos ? (body.photos as unknown[]) : undefined;
+    const texts = hasTexts ? (body.texts as unknown[]) : undefined;
 
-    const normalizedTexts = texts
-      .map((t: any, idx) => ({
-        blockKey: typeof t?.blockKey === "string" ? t.blockKey.trim() : `text-${idx + 1}`,
-        content: typeof t?.content === "string" ? t.content.trim() : "",
-        sortOrder: typeof t?.sortOrder === "number" ? t.sortOrder : idx + 1,
-      }))
-      .filter((t) => t.content.length > 0);
+    const normalizedPhotos =
+      photos === undefined
+        ? undefined
+        : photos
+            .map((p: any, idx) => ({
+              fileUrl: typeof p?.fileUrl === "string" ? p.fileUrl.trim() : "",
+              thumbnailUrl: typeof p?.thumbnailUrl === "string" ? p.thumbnailUrl.trim() : null,
+              caption: typeof p?.caption === "string" ? p.caption.trim() : null,
+              sortOrder: typeof p?.sortOrder === "number" ? p.sortOrder : idx + 1,
+            }))
+            .filter((p) => p.fileUrl.length > 0);
+
+    const normalizedTexts =
+      texts === undefined
+        ? undefined
+        : texts
+            .map((t: any, idx) => ({
+              blockKey: typeof t?.blockKey === "string" ? t.blockKey.trim() : `text-${idx + 1}`,
+              content: typeof t?.content === "string" ? t.content.trim() : "",
+              sortOrder: typeof t?.sortOrder === "number" ? t.sortOrder : idx + 1,
+            }))
+            .filter((t) => t.content.length > 0);
 
     await upsertPageContentByPageId(id, {
       photos: normalizedPhotos,
@@ -172,6 +188,48 @@ export async function upsertPageContent(req: Request, res: Response, next: NextF
     if (message === "Page not found") {
       return res.status(404).json({ error: message });
     }
+    return next(err);
+  }
+}
+
+type UploadedRequest = Request & { file?: Express.Multer.File };
+
+export async function uploadDashboardPagePhoto(req: Request, res: Response, next: NextFunction) {
+  try {
+    const id = normalizeParamToString(req.params.id);
+    if (!id) return res.status(400).json({ error: "id is required" });
+
+    const file = (req as UploadedRequest).file;
+    if (!file?.buffer?.length) {
+      return res.status(400).json({ error: "file required (multipart field name: file)" });
+    }
+
+    const page = await getPageByIdAdmin(id);
+    if (!page) return res.status(404).json({ error: "Page not found" });
+
+    const maxPhotos = await getPageTemplatePhotoLimit(id);
+    const count = await countPhotosForPage(id);
+    if (typeof maxPhotos === "number" && count >= maxPhotos) {
+      return res.status(400).json({ error: `Template allows maximum ${maxPhotos} photos` });
+    }
+
+    const created = await insertInlinePagePhoto(id, file.buffer, file.mimetype);
+    return res.status(201).json(created);
+  } catch (err) {
+    return next(err);
+  }
+}
+
+export async function deleteDashboardPagePhoto(req: Request, res: Response, next: NextFunction) {
+  try {
+    const id = normalizeParamToString(req.params.id);
+    const photoId = normalizeParamToString(req.params.photoId);
+    if (!id || !photoId) return res.status(400).json({ error: "id and photoId required" });
+
+    const ok = await deleteStoredPagePhoto(id, photoId);
+    if (!ok) return res.status(404).json({ error: "Photo not found" });
+    return res.status(204).send();
+  } catch (err) {
     return next(err);
   }
 }

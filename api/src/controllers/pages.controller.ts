@@ -1,6 +1,6 @@
 import type { NextFunction, Request, Response } from "express";
 import { getSpecialPageBySlug } from "../db/queries/specialPages.queries.js";
-import { getPagePhotosBySlug } from "../db/queries/pagePhotos.queries.js";
+import { getPagePhotoBlobBySlug, getPagePhotosBySlug } from "../db/queries/pagePhotos.queries.js";
 import { createApprovedMessageBySlug, getApprovedMessagesBySlug } from "../db/queries/pageMessages.queries.js";
 import { getTextBlocksBySlug } from "../db/queries/pageTextBlocks.queries.js";
 
@@ -24,6 +24,34 @@ export async function getPhotosByPageSlug(req: Request, res: Response, next: Nex
     const slug = Array.isArray(slugParam) ? slugParam[0] : slugParam;
     const photos = await getPagePhotosBySlug(slug ?? "");
     return res.json({ items: photos });
+  } catch (err) {
+    return next(err);
+  }
+}
+
+/** GET /api/pages/:slug/photos/:photoId/image — BYTEA veya harici file_url yonlendirmesi */
+export async function getPagePhotoImage(req: Request, res: Response, next: NextFunction) {
+  try {
+    const slugParam = req.params.slug;
+    const photoIdParam = req.params.photoId;
+    const slug = Array.isArray(slugParam) ? slugParam[0] : slugParam;
+    const photoId = Array.isArray(photoIdParam) ? photoIdParam[0] : photoIdParam;
+    if (!slug || !photoId) return res.status(400).json({ error: "slug and photoId required" });
+
+    const row = await getPagePhotoBlobBySlug(slug, photoId);
+    if (!row) return res.status(404).end();
+
+    if (row.imageData && row.imageData.length > 0) {
+      res.setHeader("Content-Type", row.mimeType || "application/octet-stream");
+      res.setHeader("Cache-Control", "public, max-age=86400");
+      return res.send(row.imageData);
+    }
+
+    if (row.fileUrl && /^https?:\/\//i.test(row.fileUrl)) {
+      return res.redirect(302, row.fileUrl);
+    }
+
+    return res.status(404).end();
   } catch (err) {
     return next(err);
   }

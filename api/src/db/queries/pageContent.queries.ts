@@ -1,4 +1,5 @@
 import { pool } from "../pool.js";
+import { getPagePhotosForPageId } from "./pagePhotos.queries.js";
 
 export type PageContentPhotoInput = {
   fileUrl: string;
@@ -13,9 +14,10 @@ export type PageContentTextInput = {
   sortOrder?: number;
 };
 
+/** photos / texts undefined ise ilgili tabloya dokunulmaz (inline yuklemeler korunur) */
 export type UpsertPageContentInput = {
-  photos: PageContentPhotoInput[];
-  texts: PageContentTextInput[];
+  photos?: PageContentPhotoInput[] | null;
+  texts?: PageContentTextInput[] | null;
   themeColor?: string | null;
   musicUrl?: string | null;
 };
@@ -56,40 +58,48 @@ export async function upsertPageContentByPageId(pageId: string, input: UpsertPag
   const maxPhotos = pageInfo.configSchema?.contentRules?.maxPhotos;
   const maxTexts = pageInfo.configSchema?.contentRules?.maxTexts;
 
-  if (typeof maxPhotos === "number" && photos.length > maxPhotos) {
-    throw new Error(`Template allows maximum ${maxPhotos} photos`);
+  if (photos != null) {
+    if (typeof maxPhotos === "number" && photos.length > maxPhotos) {
+      throw new Error(`Template allows maximum ${maxPhotos} photos`);
+    }
   }
-  if (typeof maxTexts === "number" && texts.length > maxTexts) {
-    throw new Error(`Template allows maximum ${maxTexts} text blocks`);
+
+  if (texts != null) {
+    if (typeof maxTexts === "number" && texts.length > maxTexts) {
+      throw new Error(`Template allows maximum ${maxTexts} text blocks`);
+    }
   }
 
   const client = await pool.connect();
   try {
     await client.query("BEGIN");
 
-    await client.query(`DELETE FROM page_photos WHERE page_id = $1`, [pageId]);
-    await client.query(`DELETE FROM page_text_blocks WHERE page_id = $1`, [pageId]);
-
-    for (let i = 0; i < photos.length; i++) {
-      const p = photos[i];
-      await client.query(
-        `
-        INSERT INTO page_photos (page_id, file_url, thumbnail_url, caption, sort_order)
-        VALUES ($1, $2, $3, $4, $5)
-        `,
-        [pageId, p.fileUrl, p.thumbnailUrl ?? null, p.caption ?? null, p.sortOrder ?? i + 1]
-      );
+    if (photos != null) {
+      await client.query(`DELETE FROM page_photos WHERE page_id = $1`, [pageId]);
+      for (let i = 0; i < photos.length; i++) {
+        const p = photos[i];
+        await client.query(
+          `
+          INSERT INTO page_photos (page_id, file_url, thumbnail_url, caption, sort_order)
+          VALUES ($1, $2, $3, $4, $5)
+          `,
+          [pageId, p.fileUrl, p.thumbnailUrl ?? null, p.caption ?? null, p.sortOrder ?? i + 1]
+        );
+      }
     }
 
-    for (let i = 0; i < texts.length; i++) {
-      const t = texts[i];
-      await client.query(
-        `
-        INSERT INTO page_text_blocks (page_id, block_key, content, sort_order)
-        VALUES ($1, $2, $3, $4)
-        `,
-        [pageId, t.blockKey, t.content, t.sortOrder ?? i + 1]
-      );
+    if (texts != null) {
+      await client.query(`DELETE FROM page_text_blocks WHERE page_id = $1`, [pageId]);
+      for (let i = 0; i < texts.length; i++) {
+        const t = texts[i];
+        await client.query(
+          `
+          INSERT INTO page_text_blocks (page_id, block_key, content, sort_order)
+          VALUES ($1, $2, $3, $4)
+          `,
+          [pageId, t.blockKey, t.content, t.sortOrder ?? i + 1]
+        );
+      }
     }
 
     const mergedSettings = {
@@ -126,21 +136,8 @@ export async function getPageContentByPageId(pageId: string) {
   );
   if (pageRes.rows.length === 0) return null;
 
-  const photosRes = await pool.query(
-    `
-    SELECT
-      id,
-      file_url AS "fileUrl",
-      thumbnail_url AS "thumbnailUrl",
-      caption,
-      sort_order AS "sortOrder",
-      created_at AS "createdAt"
-    FROM page_photos
-    WHERE page_id = $1
-    ORDER BY sort_order ASC, created_at ASC
-    `,
-    [pageId]
-  );
+  const pageRow = pageRes.rows[0] as { id: string; slug: string; settings: Record<string, unknown> };
+  const photos = await getPagePhotosForPageId(pageId, pageRow.slug);
 
   const textsRes = await pool.query(
     `
@@ -158,9 +155,8 @@ export async function getPageContentByPageId(pageId: string) {
   );
 
   return {
-    page: pageRes.rows[0],
-    photos: photosRes.rows,
+    page: pageRow,
+    photos,
     texts: textsRes.rows,
   };
 }
-

@@ -138,3 +138,26 @@ export async function deleteTemplate(id: string): Promise<boolean> {
   return (rowCount ?? 0) > 0;
 }
 
+/** Aktif sablonlar (pazarlama / sablon secim sayfasi) */
+export async function getPublicTemplates(): Promise<Template[]> {
+  const { rows } = await pool.query(
+    `
+    SELECT
+      id,
+      code,
+      name,
+      category,
+      preview_image_url,
+      config_schema,
+      is_active,
+      created_at,
+      updated_at
+    FROM templates
+    WHERE is_active = TRUE
+    ORDER BY category ASC, name ASC
+    `
+  );
+
+  return (rows as any[]).map((r) => mapTemplateRow(r));
+}
+

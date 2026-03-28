@@ -3,6 +3,7 @@ import {
   createTemplate,
   deleteTemplate,
   getAllTemplates,
+  getPublicTemplates,
   getTemplateById,
   updateTemplate,
   type CreateTemplateInput,
@@ -19,6 +20,27 @@ export async function listTemplates(req: Request, res: Response, next: NextFunct
   try {
     const templates = await getAllTemplates();
     return res.json({ items: templates });
+  } catch (err) {
+    return next(err);
+  }
+}
+
+export async function listPublicTemplates(req: Request, res: Response, next: NextFunction) {
+  try {
+    const templates = await getPublicTemplates();
+    return res.json({ items: templates });
+  } catch (err) {
+    return next(err);
+  }
+}
+
+export async function getPublicTemplate(req: Request, res: Response, next: NextFunction) {
+  try {
+    const id = normalizeParamToString(req.params.id);
+    if (!id) return res.status(400).json({ error: "id is required" });
+    const tpl = await getTemplateById(id);
+    if (!tpl || !tpl.isActive) return res.status(404).json({ error: "Template not found" });
+    return res.json(tpl);
   } catch (err) {
     return next(err);
   }
