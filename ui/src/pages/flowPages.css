@@ -106,6 +106,53 @@
   margin-inline: auto;
 }
 
+.category-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 1rem;
+  text-align: left;
+  max-width: 900px;
+  margin: 0 auto;
+}
+
+.category-card {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  padding: 1.25rem 1.1rem;
+  border-radius: 12px;
+  border: 1px solid #ece8f0;
+  background: #fff;
+  text-decoration: none;
+  color: inherit;
+  box-shadow: 0 4px 16px rgba(42, 36, 56, 0.05);
+  transition: box-shadow 0.2s, border-color 0.2s;
+}
+
+.category-card:hover {
+  border-color: #c7d2fe;
+  box-shadow: 0 8px 28px rgba(37, 99, 235, 0.12);
+}
+
+.category-card-title {
+  font-weight: 700;
+  font-size: 1.1rem;
+  color: #2a2438;
+}
+
+.category-card-desc {
+  font-size: 0.88rem;
+  color: #6b6375;
+  line-height: 1.4;
+}
+
+.category-card-cta {
+  margin-top: 0.25rem;
+  font-size: 0.88rem;
+  font-weight: 600;
+  color: #2563eb;
+}
+
 .template-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
@@ -151,6 +198,11 @@
   margin: 0;
   flex: 1;
   line-height: 1.4;
+}
+
+.template-card-limits {
+  font-size: 0.8rem !important;
+  color: #8a8494 !important;
 }
 
 .create-form {
@@ -270,6 +322,84 @@
   padding: 0.65rem 0.85rem;
   border-radius: 8px;
   font-size: 0.9rem;
+}
+
+/* Sabit viewport katmanı: form hataları sayfa akışına gömülmez */
+.flow-toast-layer {
+  position: fixed;
+  inset: 0;
+  z-index: 300;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 0.5rem;
+  padding: max(0.75rem, env(safe-area-inset-top, 0px)) 1rem 1rem;
+  padding-top: calc(max(0.75rem, env(safe-area-inset-top, 0px)) + 4rem);
+  pointer-events: none;
+}
+
+.flow-toast {
+  pointer-events: auto;
+  display: flex;
+  align-items: flex-start;
+  gap: 0.65rem;
+  max-width: min(440px, calc(100vw - 2rem));
+  padding: 0.75rem 0.85rem;
+  border-radius: 12px;
+  font-size: 0.9rem;
+  line-height: 1.45;
+  text-align: left;
+  box-shadow: 0 12px 40px rgba(42, 36, 56, 0.16), 0 0 0 1px rgba(42, 36, 56, 0.06);
+  animation: flow-toast-in 0.22s ease-out;
+}
+
+@keyframes flow-toast-in {
+  from {
+    opacity: 0;
+    transform: translateY(-8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.flow-toast-message {
+  margin: 0;
+  flex: 1;
+  min-width: 0;
+}
+
+.flow-toast--error {
+  background: #fff;
+  color: #991b1b;
+  border: 1px solid #fecaca;
+}
+
+.flow-toast--info {
+  background: #fff;
+  color: #1e40af;
+  border: 1px solid #bfdbfe;
+}
+
+.flow-toast-dismiss {
+  flex-shrink: 0;
+  margin: -0.15rem -0.25rem -0.15rem 0;
+  padding: 0.15rem 0.45rem;
+  border: none;
+  background: transparent;
+  color: inherit;
+  opacity: 0.55;
+  font-size: 1.35rem;
+  line-height: 1;
+  cursor: pointer;
+  border-radius: 6px;
+}
+
+.flow-toast-dismiss:hover {
+  opacity: 1;
+  background: rgba(0, 0, 0, 0.05);
 }
 
 .photo-pick-list {

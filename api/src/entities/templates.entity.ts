@@ -2,7 +2,7 @@ export type Template = {
   id: string;
   code: string;
   name: string;
-  category: string;
+  category: string | null;
   previewImageUrl: string | null;
   configSchema: Record<string, unknown>;
   isActive: boolean;
@@ -29,7 +29,7 @@ export function mapTemplateRow(row: {
   id: string;
   code: string;
   name: string;
-  category: string;
+  category: string | null;
   preview_image_url: string | null;
   config_schema: Record<string, unknown>;
   is_active: boolean;
@@ -40,7 +40,7 @@ export function mapTemplateRow(row: {
     id: row.id,
     code: row.code,
     name: row.name,
-    category: row.category,
+    category: row.category ?? null,
     previewImageUrl: row.preview_image_url,
     configSchema: row.config_schema ?? {},
     isActive: row.is_active,

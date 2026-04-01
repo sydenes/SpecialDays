@@ -64,18 +64,19 @@ export async function postTemplate(req: Request, res: Response, next: NextFuncti
 
     const code = typeof body.code === "string" ? body.code.trim() : "";
     const name = typeof body.name === "string" ? body.name.trim() : "";
-    const category = typeof body.category === "string" ? body.category.trim() : "";
+    const category =
+      typeof body.category === "string" && body.category.trim().length > 0 ? body.category.trim() : undefined;
     const previewImageUrl = typeof body.previewImageUrl === "string" ? body.previewImageUrl.trim() : null;
     const configSchema =
       body.configSchema && typeof body.configSchema === "object" ? (body.configSchema as Record<string, unknown>) : {};
     const isActive = typeof body.isActive === "boolean" ? body.isActive : true;
 
-    if (!code || !name || !category) return res.status(400).json({ error: "code, name, category required" });
+    if (!code || !name) return res.status(400).json({ error: "code, name required" });
 
     const tpl = await createTemplate({
       code,
       name,
-      category,
+      category: category ?? null,
       previewImageUrl,
       configSchema,
       isActive,

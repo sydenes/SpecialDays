@@ -3,7 +3,8 @@ export type SpecialPage = {
   templateId: string;
   templateCode: string;
   templateName: string;
-  templateCategory: string;
+  templateCategory: string | null;
+  templateConfigSchema: Record<string, unknown>;
   title: string;
   eventDate: Date | null;
   mainText: string | null;
@@ -47,6 +48,7 @@ export const specialPagesEntity = {
       t.code AS "templateCode",
       t.name AS "templateName",
       t.category AS "templateCategory",
+      t.config_schema AS "templateConfigSchema",
       title,
       event_date AS "eventDate",
       main_text AS "mainText",
@@ -61,7 +63,8 @@ export function mapSpecialPageRow(row: {
   templateId: string;
   templateCode: string;
   templateName: string;
-  templateCategory: string;
+  templateCategory: string | null;
+  templateConfigSchema?: Record<string, unknown> | null;
   title: string;
   eventDate: Date | null;
   mainText: string | null;
@@ -73,6 +76,10 @@ export function mapSpecialPageRow(row: {
     templateCode: row.templateCode,
     templateName: row.templateName,
     templateCategory: row.templateCategory,
+    templateConfigSchema:
+      row.templateConfigSchema && typeof row.templateConfigSchema === "object"
+        ? row.templateConfigSchema
+        : {},
     title: row.title,
     eventDate: row.eventDate,
     mainText: row.mainText,

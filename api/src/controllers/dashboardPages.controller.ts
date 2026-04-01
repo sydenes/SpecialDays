@@ -1,4 +1,5 @@
 import type { NextFunction, Request, Response } from "express";
+import { getPgUniqueConstraint } from "../utils/pgErrors.js";
 import {
   createPage,
   deletePage,
@@ -92,6 +93,12 @@ export async function postPage(req: Request, res: Response, next: NextFunction) 
 
     return res.status(201).json(created);
   } catch (err) {
+    const c = getPgUniqueConstraint(err);
+    if (c === "special_pages_slug_key") {
+      return res.status(409).json({
+        error: "Bu sayfa adresi (slug) zaten kullanılıyor. Başka bir adres seçin.",
+      });
+    }
     return next(err);
   }
 }
@@ -110,6 +117,12 @@ export async function patchPage(req: Request, res: Response, next: NextFunction)
     if (!updated) return res.status(404).json({ error: "Page not found" });
     return res.json(updated);
   } catch (err) {
+    const c = getPgUniqueConstraint(err);
+    if (c === "special_pages_slug_key") {
+      return res.status(409).json({
+        error: "Bu sayfa adresi (slug) zaten kullanılıyor. Başka bir adres seçin.",
+      });
+    }
     return next(err);
   }
 }

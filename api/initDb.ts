@@ -1,9 +1,9 @@
 import dotenv from "dotenv";
 import { Pool } from "pg";
 import { fileURLToPath } from "url";
+import { migrateCategoriesAndAssignments } from "./src/db/migrations/categoriesAndAssignments.js";
 import { migratePagePhotosInline } from "./src/db/migrations/pagePhotosInline.js";
 
-// Root dizindeki .env dosyasini oku.
 dotenv.config({ path: fileURLToPath(new URL("../.env", import.meta.url)) });
 
 if (!process.env.DATABASE_URL) {
@@ -12,7 +12,8 @@ if (!process.env.DATABASE_URL) {
 
 const pool = new Pool({ connectionString: process.env.DATABASE_URL });
 
-const SQL = `
+/** Tablolar + tetikleyiciler (sablon satiri yok; sablonlar migrate ile eklenir) */
+const SQL_SCHEMA = `
 CREATE EXTENSION IF NOT EXISTS "pgcrypto";
 
 CREATE TABLE IF NOT EXISTS users (
@@ -29,13 +30,32 @@ CREATE TABLE IF NOT EXISTS templates (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   code TEXT UNIQUE NOT NULL,
   name TEXT NOT NULL,
-  category TEXT NOT NULL,
+  category TEXT,
   preview_image_url TEXT,
   config_schema JSONB NOT NULL DEFAULT '{}'::jsonb,
   is_active BOOLEAN NOT NULL DEFAULT TRUE,
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
+
+CREATE TABLE IF NOT EXISTS page_categories (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  code TEXT UNIQUE NOT NULL CHECK (code ~ '^[a-z][a-z0-9]*(?:-[a-z0-9]+)*$'),
+  name TEXT NOT NULL,
+  description TEXT,
+  sort_order INT NOT NULL DEFAULT 0,
+  is_active BOOLEAN NOT NULL DEFAULT TRUE,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS category_templates (
+  category_id UUID NOT NULL REFERENCES page_categories(id) ON DELETE CASCADE,
+  template_id UUID NOT NULL REFERENCES templates(id) ON DELETE CASCADE,
+  sort_order INT NOT NULL DEFAULT 0,
+  PRIMARY KEY (category_id, template_id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_category_templates_category ON category_templates (category_id, sort_order);
 
 CREATE TABLE IF NOT EXISTS special_pages (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -138,30 +158,9 @@ CREATE TRIGGER trg_special_pages_updated_at
 BEFORE UPDATE ON special_pages
 FOR EACH ROW
 EXECUTE PROCEDURE set_updated_at();
+`;
 
-INSERT INTO templates (code, name, category, preview_image_url, config_schema)
-VALUES (
-  'wedding-basic',
-  'Wedding Basic',
-  'wedding',
-  NULL,
-  '{
-    "contentRules": {
-      "maxPhotos": 10,
-      "maxTexts": 3
-    },
-    "optionalSettings": {
-      "themeColor": true,
-      "musicUrl": true
-    }
-  }'::jsonb
-)
-ON CONFLICT (code) DO UPDATE
-SET
-  name = EXCLUDED.name,
-  category = EXCLUDED.category,
-  config_schema = EXCLUDED.config_schema;
-
+const SQL_SEED = `
 INSERT INTO users (full_name, email, password_hash)
 VALUES ('Test User', 'test@example.com', 'testhash')
 ON CONFLICT (email) DO NOTHING;
@@ -178,7 +177,7 @@ SELECT
   TRUE,
   'published'
 FROM users u
-JOIN templates t ON t.code = 'wedding-basic'
+JOIN templates t ON t.code = 'tpl-gallery'
 WHERE u.email = 'test@example.com'
 ON CONFLICT (slug) DO UPDATE
 SET
@@ -190,7 +189,6 @@ SET
   status = EXCLUDED.status,
   published_at = NOW();
 
--- Seed: photos & approved messages (UI test icin)
 DELETE FROM page_photos
 WHERE page_id = (SELECT id FROM special_pages WHERE slug = 'john-and-martha' LIMIT 1);
 
@@ -250,8 +248,10 @@ WHERE slug = 'john-and-martha';
 async function main() {
   try {
     console.log("DB init basliyor...");
-    await pool.query(SQL);
+    await pool.query(SQL_SCHEMA);
     await migratePagePhotosInline(pool);
+    await migrateCategoriesAndAssignments(pool);
+    await pool.query(SQL_SEED);
     console.log("DB init tamamlandi.");
     await pool.end();
   } catch (err) {
@@ -262,4 +262,3 @@ async function main() {
 }
 
 main();
-

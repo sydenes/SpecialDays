@@ -1,6 +1,7 @@
 import dotenv from "dotenv";
 import { Pool } from "pg";
 import { fileURLToPath } from "url";
+import { migrateCategoriesAndAssignments } from "./src/db/migrations/categoriesAndAssignments.js";
 import { migratePagePhotosInline } from "./src/db/migrations/pagePhotosInline.js";
 
 dotenv.config({ path: fileURLToPath(new URL("../.env", import.meta.url)) });
@@ -15,6 +16,7 @@ async function main() {
   try {
     console.log("Sadece migrasyonlar calisiyor...");
     await migratePagePhotosInline(pool);
+    await migrateCategoriesAndAssignments(pool);
     console.log("Migrasyonlar bitti.");
   } catch (err) {
     console.error("Migrasyon hatasi:", err);

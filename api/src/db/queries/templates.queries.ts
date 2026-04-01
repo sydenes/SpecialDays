@@ -4,7 +4,7 @@ import { templatesEntity, mapTemplateRow, type Template } from "../../entities/t
 export type CreateTemplateInput = {
   code: string;
   name: string;
-  category: string;
+  category?: string | null;
   previewImageUrl?: string | null;
   configSchema?: Record<string, unknown>;
   isActive?: boolean;
@@ -58,11 +58,14 @@ export async function createTemplate(input: CreateTemplateInput): Promise<Templa
   const {
     code,
     name,
-    category,
+    category: categoryRaw,
     previewImageUrl = null,
     configSchema = {},
     isActive = true,
   } = input;
+
+  const category =
+    typeof categoryRaw === "string" && categoryRaw.trim().length > 0 ? categoryRaw.trim() : "shared";
 
   const { rows } = await pool.query(
     `

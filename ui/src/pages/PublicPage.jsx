@@ -38,6 +38,31 @@ function useCountdown(target) {
   }, [target, now])
 }
 
+function resolveLayout(page) {
+  const l = page?.templateConfigSchema?.layout
+  if (l === 'stacked' || l === 'minimal') return l
+  return 'split-hero'
+}
+
+function CountdownRow({ cd, theme, compact }) {
+  if (!cd) return null
+  return (
+    <div className={`countdown-row ${compact ? 'countdown-row--compact' : ''}`} aria-live="polite">
+      {[
+        ['Gün', cd.days],
+        ['Saat', cd.hours],
+        ['Dakika', cd.minutes],
+        ['Saniye', cd.seconds],
+      ].map(([label, val]) => (
+        <div key={label} className="countdown-box" style={{ background: theme }}>
+          {val}
+          <span>{label}</span>
+        </div>
+      ))}
+    </div>
+  )
+}
+
 export function PublicPage() {
   const { slug } = useParams()
   const [page, setPage] = useState(null)
@@ -110,6 +135,11 @@ export function PublicPage() {
     page?.settings && typeof page.settings.musicUrl === 'string' ? page.settings.musicUrl : ''
 
   const cd = useCountdown(page?.eventDate)
+  const layout = page ? resolveLayout(page) : 'split-hero'
+  const cfg = page?.templateConfigSchema || {}
+  const showCountdown = cfg?.components?.countdown !== false && page?.eventDate && cd
+  const showGuestbook = cfg?.components?.guestbook !== false
+
   const heroPhoto = photos[0]
   const thumbPhotos = photos.slice(heroPhoto ? 1 : 0)
 
@@ -160,52 +190,50 @@ export function PublicPage() {
     )
   }
 
-  return (
-    <div className="published-wrap" style={{ '--published-accent': theme }}>
-      {musicUrl ? (
-        <audio src={musicUrl} controls style={{ display: 'block', margin: '0 auto 1rem', width: '100%', maxWidth: 420 }} />
-      ) : null}
+  const frameClass =
+    layout === 'minimal' ? 'published-frame published-frame--minimal' : 'published-frame'
 
-      <div className="published-frame">
-        <div className="published-hero-top">
-          <h1>{page.title}</h1>
-          {page.eventDate && <p className="published-date">{formatEventDate(page.eventDate)}</p>}
-        </div>
-
-        {page.mainText ? <p className="published-main-text">{page.mainText}</p> : null}
-
-        {page.eventDate && cd && (
-          <div className="countdown-row" aria-live="polite">
-            {[
-              ['Gün', cd.days],
-              ['Saat', cd.hours],
-              ['Dakika', cd.minutes],
-              ['Saniye', cd.seconds],
-            ].map(([label, val]) => (
-              <div key={label} className="countdown-box" style={{ background: theme }}>
-                {val}
-                <span>{label}</span>
-              </div>
-            ))}
-          </div>
-        )}
-
-        <div className="published-split">
-          <div>
-            {heroPhoto ? (
-              <img
-                className="published-feature-img"
-                src={photoSrc(heroPhoto.fileUrl || heroPhoto.thumbnailUrl)}
-                alt={heroPhoto.caption || ''}
-              />
+  const bodyMain = (() => {
+    if (layout === 'stacked') {
+      return (
+        <>
+          {heroPhoto ? (
+            <img
+              className="published-hero-full"
+              src={photoSrc(heroPhoto.fileUrl || heroPhoto.thumbnailUrl)}
+              alt={heroPhoto.caption || ''}
+            />
+          ) : (
+            <div className="published-hero-full published-hero-placeholder">Fotoğraf ekleyin</div>
+          )}
+          {showCountdown && <CountdownRow cd={cd} theme={theme} />}
+          <div className="published-stack-cards">
+            {texts.length === 0 ? (
+              <p className="published-stack-card">Bu sayfada henüz ek metin yok.</p>
             ) : (
-              <div className="published-feature-img" style={{ display: 'grid', placeItems: 'center', color: '#9a94a8' }}>
-                Fotoğraf ekleyin
-              </div>
+              texts.map((t) => (
+                <div key={t.id} className="published-stack-card">
+                  {t.content}
+                </div>
+              ))
             )}
           </div>
-          <div className="published-welcome">
-            <h2>Hoş geldiniz</h2>
+          {photos.length > 0 && (
+            <div className="published-photo-strip">
+              {photos.map((p) => (
+                <img key={p.id} src={photoSrc(p.thumbnailUrl || p.fileUrl)} alt={p.caption || ''} />
+              ))}
+            </div>
+          )}
+        </>
+      )
+    }
+
+    if (layout === 'minimal') {
+      return (
+        <>
+          {showCountdown && <CountdownRow cd={cd} theme={theme} compact />}
+          <div className="published-minimal-texts">
             {texts.length === 0 ? (
               <p className="block">Bu sayfada henüz ek metin yok.</p>
             ) : (
@@ -215,35 +243,92 @@ export function PublicPage() {
                 </p>
               ))
             )}
-            {thumbPhotos.length > 0 && (
-              <div className="published-gallery">
-                {thumbPhotos.map((p) => (
-                  <img key={p.id} src={photoSrc(p.thumbnailUrl || p.fileUrl)} alt={p.caption || ''} />
-                ))}
-              </div>
-            )}
           </div>
+          {photos.length > 0 && (
+            <div className="published-minimal-photos">
+              {photos.map((p) => (
+                <img key={p.id} src={photoSrc(p.thumbnailUrl || p.fileUrl)} alt={p.caption || ''} />
+              ))}
+            </div>
+          )}
+        </>
+      )
+    }
+
+    // split-hero (default)
+    return (
+      <div className="published-split">
+        <div>
+          {heroPhoto ? (
+            <img
+              className="published-feature-img"
+              src={photoSrc(heroPhoto.fileUrl || heroPhoto.thumbnailUrl)}
+              alt={heroPhoto.caption || ''}
+            />
+          ) : (
+            <div className="published-feature-img published-hero-placeholder">Fotoğraf ekleyin</div>
+          )}
+        </div>
+        <div className="published-welcome">
+          <h2>Hoş geldiniz</h2>
+          {texts.length === 0 ? (
+            <p className="block">Bu sayfada henüz ek metin yok.</p>
+          ) : (
+            texts.map((t) => (
+              <p key={t.id} className="block">
+                {t.content}
+              </p>
+            ))
+          )}
+          {thumbPhotos.length > 0 && (
+            <div className="published-gallery">
+              {thumbPhotos.map((p) => (
+                <img key={p.id} src={photoSrc(p.thumbnailUrl || p.fileUrl)} alt={p.caption || ''} />
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+    )
+  })()
+
+  return (
+    <div className="published-wrap" style={{ '--published-accent': theme }}>
+      {musicUrl ? (
+        <audio src={musicUrl} controls style={{ display: 'block', margin: '0 auto 1rem', width: '100%', maxWidth: 420 }} />
+      ) : null}
+
+      <div className={frameClass}>
+        <div className="published-hero-top">
+          <h1>{page.title}</h1>
+          {page.eventDate && <p className="published-date">{formatEventDate(page.eventDate)}</p>}
         </div>
 
-        <div className="guest-section">
-          <h3>
-            {page.title ? `${page.title} için mesaj bırakın` : 'Mesaj bırakın'}
-          </h3>
-          {error && <p className="published-error">{error}</p>}
-          <form className="guest-form" onSubmit={onSubmitMessage}>
-            <input type="text" placeholder="İsim" value={authorName} onChange={(e) => setAuthorName(e.target.value)} />
-            <input
-              type="email"
-              placeholder="E-posta (isteğe bağlı)"
-              value={authorEmail}
-              onChange={(e) => setAuthorEmail(e.target.value)}
-            />
-            <textarea placeholder="Mesajınız" value={messageText} onChange={(e) => setMessageText(e.target.value)} />
-            <button type="submit" disabled={posting} style={{ background: theme }}>
-              {posting ? 'Gönderiliyor...' : 'Gönder'}
-            </button>
-          </form>
-        </div>
+        {page.mainText ? <p className="published-main-text">{page.mainText}</p> : null}
+
+        {layout === 'split-hero' && showCountdown && <CountdownRow cd={cd} theme={theme} />}
+
+        {bodyMain}
+
+        {showGuestbook && (
+          <div className="guest-section">
+            <h3>{page.title ? `${page.title} için mesaj bırakın` : 'Mesaj bırakın'}</h3>
+            {error && <p className="published-error">{error}</p>}
+            <form className="guest-form" onSubmit={onSubmitMessage}>
+              <input type="text" placeholder="İsim" value={authorName} onChange={(e) => setAuthorName(e.target.value)} />
+              <input
+                type="email"
+                placeholder="E-posta (isteğe bağlı)"
+                value={authorEmail}
+                onChange={(e) => setAuthorEmail(e.target.value)}
+              />
+              <textarea placeholder="Mesajınız" value={messageText} onChange={(e) => setMessageText(e.target.value)} />
+              <button type="submit" disabled={posting} style={{ background: theme }}>
+                {posting ? 'Gönderiliyor...' : 'Gönder'}
+              </button>
+            </form>
+          </div>
+        )}
       </div>
     </div>
   )

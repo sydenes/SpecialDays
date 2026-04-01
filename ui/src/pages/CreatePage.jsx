@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
+import { createPortal } from 'react-dom'
 import { Link, useLocation, useNavigate, useSearchParams } from 'react-router-dom'
 import { API_BASE, DEFAULT_OWNER_USER_ID } from '../lib/api.js'
 import './flowPages.css'
@@ -6,10 +7,21 @@ import './flowPages.css'
 function textBlockKeys(template) {
   const rules = template?.configSchema?.contentRules
   const max = typeof rules?.maxTexts === 'number' ? rules.maxTexts : 3
-  if (template?.code === 'wedding-basic' && max >= 3) {
-    return ['intro', 'story', 'footer'].slice(0, max)
+  const blocks = template?.configSchema?.textBlocks
+  if (Array.isArray(blocks) && blocks.length > 0) {
+    const keys = blocks.map((b) => b.key).filter(Boolean)
+    return keys.slice(0, Math.max(0, max))
   }
   return Array.from({ length: Math.max(0, max) }, (_, i) => `text-${i + 1}`)
+}
+
+function labelForKey(template, key) {
+  const blocks = template?.configSchema?.textBlocks
+  if (Array.isArray(blocks)) {
+    const b = blocks.find((x) => x.key === key)
+    if (b && typeof b.label === 'string') return b.label
+  }
+  return KEY_LABELS[key] || `Metin: ${key}`
 }
 
 const KEY_LABELS = {
@@ -42,6 +54,7 @@ export function CreatePage() {
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
   const templateFromState = location.state?.template
+  const categoryFromPick = location.state?.categoryCode
 
   const [template, setTemplate] = useState(templateFromState || null)
   const [loadError, setLoadError] = useState('')
@@ -109,7 +122,10 @@ export function CreatePage() {
     e.preventDefault()
     setFormError('')
     setFormInfo('')
-    if (!template) return
+    if (!template) {
+      setFormError('Şablon bilgisi eksik. Lütfen kategoriden şablon seçerek tekrar deneyin.')
+      return
+    }
 
     const s = slug.trim().toLowerCase()
     const t = title.trim()
@@ -166,9 +182,19 @@ export function CreatePage() {
           settings: {},
         }),
       })
-      const createdBody = await createRes.json().catch(() => ({}))
+      const createRaw = await createRes.text()
+      let createdBody = {}
+      try {
+        createdBody = createRaw ? JSON.parse(createRaw) : {}
+      } catch {
+        createdBody = {}
+      }
       if (!createRes.ok) {
-        setFormError(createdBody?.error || 'Sayfa oluşturulamadı.')
+        const msg =
+          typeof createdBody?.error === 'string' && createdBody.error.trim()
+            ? createdBody.error.trim()
+            : `Sayfa oluşturulamadı (HTTP ${createRes.status}).`
+        setFormError(msg)
         return
       }
       const pageId = createdBody.id
@@ -204,7 +230,8 @@ export function CreatePage() {
 
       setFormInfo('Sayfanız yayında.')
       navigate(`/${s}`, { replace: true })
-    } catch {
+    } catch (err) {
+      console.error('Sayfa yayınlama hatası:', err)
       setFormError('Sunucuya bağlanılamadı.')
     } finally {
       setSubmitting(false)
@@ -234,17 +261,49 @@ export function CreatePage() {
     )
   }
 
+  const toastLayer =
+    (formError || formInfo) &&
+    createPortal(
+      <div className="flow-toast-layer" aria-live="polite">
+        {formError ? (
+          <div className="flow-toast flow-toast--error" role="alert">
+            <p className="flow-toast-message">{formError}</p>
+            <button
+              type="button"
+              className="flow-toast-dismiss"
+              onClick={() => setFormError('')}
+              aria-label="Kapat"
+            >
+              ×
+            </button>
+          </div>
+        ) : null}
+        {formInfo ? (
+          <div className="flow-toast flow-toast--info">
+            <p className="flow-toast-message">{formInfo}</p>
+            <button
+              type="button"
+              className="flow-toast-dismiss"
+              onClick={() => setFormInfo('')}
+              aria-label="Kapat"
+            >
+              ×
+            </button>
+          </div>
+        ) : null}
+      </div>,
+      document.body
+    )
+
   return (
     <section className="flow-section">
+      {toastLayer}
       <h1>Sayfanızı oluşturun</h1>
       <p className="flow-lead">
         Şablon: <strong>{template.name}</strong> ({template.code})
       </p>
 
-      {formError && <p className="error-banner">{formError}</p>}
-      {formInfo && <p className="info-banner">{formInfo}</p>}
-
-      <form className="create-form" onSubmit={onPublish}>
+      <form className="create-form" onSubmit={onPublish} noValidate autoComplete="off">
         <label>
           Sayfa adresi (slug)
           <input value={slug} onChange={(e) => setSlug(e.target.value)} placeholder="john-ve-martha" />
@@ -265,7 +324,7 @@ export function CreatePage() {
 
         {keys.map((k) => (
           <label key={k}>
-            {KEY_LABELS[k] || `Metin: ${k}`}
+            {labelForKey(template, k)}
             <textarea
               value={textByKey[k] ?? ''}
               onChange={(e) => setTextByKey((prev) => ({ ...prev, [k]: e.target.value }))}
@@ -333,7 +392,7 @@ export function CreatePage() {
       </form>
 
       <p style={{ marginTop: '1.5rem' }}>
-        <Link to="/templates">Başka şablon</Link>
+        <Link to={categoryFromPick ? `/templates/${categoryFromPick}` : '/templates'}>Başka şablon</Link>
       </p>
     </section>
   )
