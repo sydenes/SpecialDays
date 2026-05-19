@@ -3,6 +3,7 @@ import { Pool } from "pg";
 import { fileURLToPath } from "url";
 import { migrateCategoriesAndAssignments } from "./src/db/migrations/categoriesAndAssignments.js";
 import { migratePagePhotosInline } from "./src/db/migrations/pagePhotosInline.js";
+import { migrateTemplateVariants } from "./src/db/migrations/templateVariants.js";
 
 dotenv.config({ path: fileURLToPath(new URL("../.env", import.meta.url)) });
 
@@ -251,6 +252,7 @@ async function main() {
     await pool.query(SQL_SCHEMA);
     await migratePagePhotosInline(pool);
     await migrateCategoriesAndAssignments(pool);
+    await migrateTemplateVariants(pool);
     await pool.query(SQL_SEED);
     console.log("DB init tamamlandi.");
     await pool.end();

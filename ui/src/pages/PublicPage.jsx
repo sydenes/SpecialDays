@@ -1,17 +1,37 @@
 import { useEffect, useMemo, useState } from 'react'
+import { motion, useReducedMotion } from 'framer-motion'
 import { useParams } from 'react-router-dom'
 import { API_BASE } from '../lib/api.js'
+import { buildGoogleCalendarUrl } from '../lib/calendarUrl.js'
+import { formatEventDateTr } from '../lib/eventFormat.js'
 import { photoSrc } from '../lib/photoUrl.js'
+import { BeautyPublishedLayout } from './beauty/BeautyPublishedLayout.jsx'
 import './PublicPage.css'
 
-function formatEventDate(iso) {
-  if (!iso) return null
-  const d = new Date(iso)
-  if (Number.isNaN(d.getTime())) return null
-  return new Intl.DateTimeFormat('tr-TR', {
-    dateStyle: 'long',
-    timeStyle: 'short',
-  }).format(d)
+const LAYOUTS = new Set([
+  'split-hero',
+  'stacked',
+  'minimal',
+  'magazine',
+  'timeline',
+  'split-scroll',
+  'letter',
+  'party',
+  'scrapbook',
+  'journey',
+  'beauty',
+])
+
+const THEME_WRAP_CLASS = {
+  default: 'published-theme-default',
+  elegant: 'published-theme-elegant',
+  'minimal-clean': 'published-theme-minimal',
+  'wedding-gold': 'published-theme-wedding-gold',
+  'party-neon': 'published-theme-party',
+  scrapbook: 'published-theme-scrapbook',
+  'romantic-burgundy': 'published-theme-journey',
+  'letter-parchment': 'published-theme-letter',
+  'beauty-templatemo': 'published-theme-default',
 }
 
 function useCountdown(target) {
@@ -40,8 +60,17 @@ function useCountdown(target) {
 
 function resolveLayout(page) {
   const l = page?.templateConfigSchema?.layout
-  if (l === 'stacked' || l === 'minimal') return l
-  return 'split-hero'
+  return typeof l === 'string' && LAYOUTS.has(l) ? l : 'split-hero'
+}
+
+function resolveVisualTheme(cfg) {
+  const t = cfg?.visualTheme
+  return typeof t === 'string' ? t : 'default'
+}
+
+function isLikelyBirthdayPage(page) {
+  const raw = `${page?.title || ''} ${page?.mainText || ''}`.toLocaleLowerCase('tr-TR')
+  return /(doğum|dogum|iyi ki doğdun|iyi ki dogdun|birthday)/i.test(raw)
 }
 
 function CountdownRow({ cd, theme, compact }) {
@@ -63,17 +92,72 @@ function CountdownRow({ cd, theme, compact }) {
   )
 }
 
+function GuestBlock({
+  pageTitle,
+  theme,
+  guestError,
+  authorName,
+  setAuthorName,
+  authorEmail,
+  setAuthorEmail,
+  messageText,
+  setMessageText,
+  posting,
+  onSubmit,
+  compact,
+}) {
+  return (
+    <div className={`guest-section ${compact ? 'guest-section--compact' : ''}`}>
+      <h3>{pageTitle ? `${pageTitle} için mesaj bırakın` : 'Mesaj bırakın'}</h3>
+      {guestError ? <p className="published-error published-error--inline">{guestError}</p> : null}
+      <form className="guest-form" onSubmit={onSubmit}>
+        <input type="text" placeholder="İsim" value={authorName} onChange={(e) => setAuthorName(e.target.value)} />
+        <input
+          type="email"
+          placeholder="E-posta (isteğe bağlı)"
+          value={authorEmail}
+          onChange={(e) => setAuthorEmail(e.target.value)}
+        />
+        <textarea placeholder="Mesajınız" value={messageText} onChange={(e) => setMessageText(e.target.value)} />
+        <button type="submit" disabled={posting} style={{ background: theme }}>
+          {posting ? 'Gönderiliyor...' : 'Gönder'}
+        </button>
+      </form>
+    </div>
+  )
+}
+
+function SaveTheDateButton({ page, theme, label }) {
+  if (!page?.eventDate) return null
+  const href = buildGoogleCalendarUrl(page.title || 'Etkinlik', page.eventDate)
+  return (
+    <div className="published-save-date">
+      <a
+        href={href}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="published-cal-btn"
+        style={{ borderColor: theme, color: theme }}
+      >
+        {label}
+      </a>
+    </div>
+  )
+}
+
 export function PublicPage() {
   const { slug } = useParams()
   const [page, setPage] = useState(null)
   const [photos, setPhotos] = useState([])
   const [texts, setTexts] = useState([])
   const [loading, setLoading] = useState(true)
-  const [error, setError] = useState('')
+  const [loadError, setLoadError] = useState('')
+  const [guestError, setGuestError] = useState('')
   const [authorName, setAuthorName] = useState('')
   const [authorEmail, setAuthorEmail] = useState('')
   const [messageText, setMessageText] = useState('')
   const [posting, setPosting] = useState(false)
+  const prefersReducedMotion = useReducedMotion()
 
   useEffect(() => {
     if (!slug) {
@@ -85,12 +169,12 @@ export function PublicPage() {
     let cancelled = false
     ;(async () => {
       setLoading(true)
-      setError('')
+      setLoadError('')
       try {
         const pageRes = await fetch(`${API_BASE}/api/pages/${slug}`)
         if (!pageRes.ok) {
           if (!cancelled) {
-            setError(pageRes.status === 404 ? 'Bu adreste sayfa yok.' : 'Sayfa yüklenemedi.')
+            setLoadError(pageRes.status === 404 ? 'Bu adreste sayfa yok.' : 'Sayfa yüklenemedi.')
             setPage(null)
             setPhotos([])
             setTexts([])
@@ -116,7 +200,7 @@ export function PublicPage() {
         }
       } catch {
         if (!cancelled) {
-          setError('Sunucuya bağlanılamadı.')
+          setLoadError('Sunucuya bağlanılamadı.')
           setPage(null)
         }
       } finally {
@@ -129,6 +213,11 @@ export function PublicPage() {
     }
   }, [slug])
 
+  const textsSorted = useMemo(
+    () => [...texts].sort((a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0)),
+    [texts]
+  )
+
   const theme =
     (page?.settings && typeof page.settings.themeColor === 'string' && page.settings.themeColor) || '#c41e3a'
   const musicUrl =
@@ -137,11 +226,15 @@ export function PublicPage() {
   const cd = useCountdown(page?.eventDate)
   const layout = page ? resolveLayout(page) : 'split-hero'
   const cfg = page?.templateConfigSchema || {}
+  const visualTheme = resolveVisualTheme(cfg)
+  const themeWrap = THEME_WRAP_CLASS[visualTheme] || THEME_WRAP_CLASS.default
+
   const showCountdown = cfg?.components?.countdown !== false && page?.eventDate && cd
   const showGuestbook = cfg?.components?.guestbook !== false
 
   const heroPhoto = photos[0]
-  const thumbPhotos = photos.slice(heroPhoto ? 1 : 0)
+  const thumbPhotos = photos.slice(heroPhoto ? 1 : 0, heroPhoto ? 3 : 2)
+  const restPhotos = photos.slice(heroPhoto ? 1 : 0)
 
   const onSubmitMessage = async (e) => {
     e.preventDefault()
@@ -149,12 +242,12 @@ export function PublicPage() {
     const name = authorName.trim()
     const text = messageText.trim()
     if (!name || !text) {
-      setError('Lütfen isim ve mesaj girin.')
+      setGuestError('Lütfen isim ve mesaj girin.')
       return
     }
     try {
       setPosting(true)
-      setError('')
+      setGuestError('')
       const res = await fetch(`${API_BASE}/api/pages/${slug}/messages`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -167,7 +260,7 @@ export function PublicPage() {
       if (!res.ok) throw new Error('fail')
       setMessageText('')
     } catch {
-      setError('Mesaj gönderilemedi.')
+      setGuestError('Mesaj gönderilemedi.')
     } finally {
       setPosting(false)
     }
@@ -184,152 +277,157 @@ export function PublicPage() {
   if (!page) {
     return (
       <div className="published-wrap">
-        {error && <p className="published-error">{error}</p>}
-        {!error && <p className="published-missing">Sayfa bulunamadı.</p>}
+        {loadError ? <p className="published-error">{loadError}</p> : null}
+        {!loadError ? <p className="published-missing">Sayfa bulunamadı.</p> : null}
       </div>
     )
   }
 
-  const frameClass =
-    layout === 'minimal' ? 'published-frame published-frame--minimal' : 'published-frame'
-
-  const bodyMain = (() => {
-    if (layout === 'stacked') {
-      return (
-        <>
-          {heroPhoto ? (
-            <img
-              className="published-hero-full"
-              src={photoSrc(heroPhoto.fileUrl || heroPhoto.thumbnailUrl)}
-              alt={heroPhoto.caption || ''}
-            />
-          ) : (
-            <div className="published-hero-full published-hero-placeholder">Fotoğraf ekleyin</div>
-          )}
-          {showCountdown && <CountdownRow cd={cd} theme={theme} />}
-          <div className="published-stack-cards">
-            {texts.length === 0 ? (
-              <p className="published-stack-card">Bu sayfada henüz ek metin yok.</p>
-            ) : (
-              texts.map((t) => (
-                <div key={t.id} className="published-stack-card">
-                  {t.content}
-                </div>
-              ))
-            )}
-          </div>
-          {photos.length > 0 && (
-            <div className="published-photo-strip">
-              {photos.map((p) => (
-                <img key={p.id} src={photoSrc(p.thumbnailUrl || p.fileUrl)} alt={p.caption || ''} />
-              ))}
-            </div>
-          )}
-        </>
-      )
-    }
-
-    if (layout === 'minimal') {
-      return (
-        <>
-          {showCountdown && <CountdownRow cd={cd} theme={theme} compact />}
-          <div className="published-minimal-texts">
-            {texts.length === 0 ? (
-              <p className="block">Bu sayfada henüz ek metin yok.</p>
-            ) : (
-              texts.map((t) => (
-                <p key={t.id} className="block">
-                  {t.content}
-                </p>
-              ))
-            )}
-          </div>
-          {photos.length > 0 && (
-            <div className="published-minimal-photos">
-              {photos.map((p) => (
-                <img key={p.id} src={photoSrc(p.thumbnailUrl || p.fileUrl)} alt={p.caption || ''} />
-              ))}
-            </div>
-          )}
-        </>
-      )
-    }
-
-    // split-hero (default)
+  if (layout === 'beauty') {
     return (
-      <div className="published-split">
-        <div>
-          {heroPhoto ? (
-            <img
-              className="published-feature-img"
-              src={photoSrc(heroPhoto.fileUrl || heroPhoto.thumbnailUrl)}
-              alt={heroPhoto.caption || ''}
-            />
-          ) : (
-            <div className="published-feature-img published-hero-placeholder">Fotoğraf ekleyin</div>
-          )}
-        </div>
-        <div className="published-welcome">
-          <h2>Hoş geldiniz</h2>
-          {texts.length === 0 ? (
-            <p className="block">Bu sayfada henüz ek metin yok.</p>
-          ) : (
-            texts.map((t) => (
-              <p key={t.id} className="block">
-                {t.content}
-              </p>
-            ))
-          )}
-          {thumbPhotos.length > 0 && (
-            <div className="published-gallery">
-              {thumbPhotos.map((p) => (
-                <img key={p.id} src={photoSrc(p.thumbnailUrl || p.fileUrl)} alt={p.caption || ''} />
-              ))}
-            </div>
-          )}
-        </div>
+      <div
+        className={`published-wrap published-wrap--beauty-fullbleed ${themeWrap}`}
+        style={{ '--published-accent': theme, maxWidth: '100%', width: '100%', padding: 0 }}
+      >
+        {musicUrl ? <audio src={musicUrl} controls className="beauty-top-audio" /> : null}
+        <BeautyPublishedLayout
+          page={page}
+          photos={photos}
+          textsSorted={textsSorted}
+          theme={theme}
+          cd={cd}
+          showCountdown={showCountdown}
+          showGuestbook={showGuestbook}
+          guestError={guestError}
+          authorName={authorName}
+          setAuthorName={setAuthorName}
+          authorEmail={authorEmail}
+          setAuthorEmail={setAuthorEmail}
+          messageText={messageText}
+          setMessageText={setMessageText}
+          posting={posting}
+          onSubmitMessage={onSubmitMessage}
+        />
       </div>
     )
-  })()
+  }
+
+  const wrapClass = ['published-wrap', 'published-wrap--premium', themeWrap].filter(Boolean).join(' ')
+  const isBirthday = isLikelyBirthdayPage(page)
+  const saveLabel =
+    (cfg.sectionOptions?.saveTheDate?.label && String(cfg.sectionOptions.saveTheDate.label)) || 'Takvime ekle'
+  const fadeUp = prefersReducedMotion
+    ? {}
+    : {
+        initial: { opacity: 0, y: 24 },
+        whileInView: { opacity: 1, y: 0 },
+        viewport: { once: true, amount: 0.28 },
+        transition: { duration: 0.65, ease: 'easeOut' },
+      }
 
   return (
-    <div className="published-wrap" style={{ '--published-accent': theme }}>
-      {musicUrl ? (
-        <audio src={musicUrl} controls style={{ display: 'block', margin: '0 auto 1rem', width: '100%', maxWidth: 420 }} />
-      ) : null}
+    <div className={wrapClass} style={{ '--published-accent': theme }}>
+      <div className="published-premium-bg" />
+      <header className="published-topbar">
+        <a href="/" className="published-brand">
+          Special Days
+        </a>
+        <a href="/" className="published-home-btn">
+          Ana sayfa
+        </a>
+      </header>
 
-      <div className={frameClass}>
-        <div className="published-hero-top">
-          <h1>{page.title}</h1>
-          {page.eventDate && <p className="published-date">{formatEventDate(page.eventDate)}</p>}
-        </div>
-
-        {page.mainText ? <p className="published-main-text">{page.mainText}</p> : null}
-
-        {layout === 'split-hero' && showCountdown && <CountdownRow cd={cd} theme={theme} />}
-
-        {bodyMain}
-
-        {showGuestbook && (
-          <div className="guest-section">
-            <h3>{page.title ? `${page.title} için mesaj bırakın` : 'Mesaj bırakın'}</h3>
-            {error && <p className="published-error">{error}</p>}
-            <form className="guest-form" onSubmit={onSubmitMessage}>
-              <input type="text" placeholder="İsim" value={authorName} onChange={(e) => setAuthorName(e.target.value)} />
-              <input
-                type="email"
-                placeholder="E-posta (isteğe bağlı)"
-                value={authorEmail}
-                onChange={(e) => setAuthorEmail(e.target.value)}
-              />
-              <textarea placeholder="Mesajınız" value={messageText} onChange={(e) => setMessageText(e.target.value)} />
-              <button type="submit" disabled={posting} style={{ background: theme }}>
-                {posting ? 'Gönderiliyor...' : 'Gönder'}
-              </button>
-            </form>
+      <main className="published-premium-shell">
+        <motion.section className="published-premium-hero" {...fadeUp}>
+          <div className="published-premium-copy">
+            <p className="published-overline">{isBirthday ? 'Dogum gunun kutlu olsun' : 'Sonsuz bir aniya davetlisin'}</p>
+            <h1>{page.title}</h1>
+            {page.eventDate ? <p className="published-date">{formatEventDateTr(page.eventDate)}</p> : null}
+            {page.mainText ? <p className="published-main-text">{page.mainText}</p> : null}
+            {showCountdown ? <CountdownRow cd={cd} theme={theme} /> : null}
           </div>
-        )}
-      </div>
+          <div className="published-premium-visual">
+            {heroPhoto ? (
+              <img
+                className="published-hero-full published-hero-full--premium"
+                src={photoSrc(heroPhoto.fileUrl || heroPhoto.thumbnailUrl)}
+                alt={heroPhoto.caption || ''}
+              />
+            ) : (
+              <div className="published-hero-full published-hero-placeholder">Fotoğraf ekleyin</div>
+            )}
+            {thumbPhotos.length > 0 ? (
+              <div className="published-floating-thumbs">
+                {thumbPhotos.map((p) => (
+                  <img key={p.id} src={photoSrc(p.thumbnailUrl || p.fileUrl)} alt={p.caption || ''} />
+                ))}
+              </div>
+            ) : null}
+          </div>
+        </motion.section>
+
+        <motion.section className="published-story-card" {...fadeUp}>
+          <h2>{isBirthday ? 'Bugun senin gunun' : 'Mesajimiz'}</h2>
+          <div className="published-story-grid">
+            {textsSorted.length === 0 ? (
+              <p className="published-story-empty">Bu sayfada henüz ek metin yok.</p>
+            ) : (
+              textsSorted.map((t) => (
+                <article key={t.id} className="published-story-item">
+                  {t.content}
+                </article>
+              ))
+            )}
+          </div>
+          {!isBirthday && page.eventDate ? <SaveTheDateButton page={page} theme={theme} label={saveLabel} /> : null}
+        </motion.section>
+
+        {restPhotos.length > 0 ? (
+          <motion.section className="published-gallery-section" {...fadeUp}>
+            <h3>Anılar</h3>
+            <div className="published-masonry-grid published-masonry-grid--premium">
+              {restPhotos.map((p) => (
+                <img key={p.id} src={photoSrc(p.thumbnailUrl || p.fileUrl)} alt={p.caption || ''} />
+              ))}
+            </div>
+          </motion.section>
+        ) : null}
+
+        {musicUrl ? (
+          <motion.section className="published-music-section" {...fadeUp}>
+            <div className="published-music-visual" />
+            <div className="published-music-content">
+              <p>En sevdigimiz sarki</p>
+              <audio src={musicUrl} controls className="published-audio" />
+            </div>
+          </motion.section>
+        ) : null}
+
+        {showGuestbook ? (
+          <motion.section className="published-message-shell" {...fadeUp}>
+            <div className="published-message-note">
+              <h3>{page.title} için bir not bırak</h3>
+              <p>Mesajin bu sayfadaki en guzel hatiralardan biri olacak.</p>
+            </div>
+            <GuestBlock
+              pageTitle={page.title}
+              theme={theme}
+              guestError={guestError}
+              authorName={authorName}
+              setAuthorName={setAuthorName}
+              authorEmail={authorEmail}
+              setAuthorEmail={setAuthorEmail}
+              messageText={messageText}
+              setMessageText={setMessageText}
+              posting={posting}
+              onSubmit={onSubmitMessage}
+              compact
+            />
+          </motion.section>
+        ) : null}
+      </main>
+
+      <footer className="published-footer">Iyi ki varsin.</footer>
     </div>
   )
 }

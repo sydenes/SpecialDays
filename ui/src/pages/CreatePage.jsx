@@ -4,6 +4,23 @@ import { Link, useLocation, useNavigate, useSearchParams } from 'react-router-do
 import { API_BASE, DEFAULT_OWNER_USER_ID } from '../lib/api.js'
 import './flowPages.css'
 
+const DEV_PREFILL_ENABLED = import.meta.env.DEV
+
+const DEV_PREFILL = {
+  slug: 'ornek-ask-sayfasi',
+  title: 'Elif & Mert Nisan Kutlamasi',
+  eventDate: '2026-09-12T19:30',
+  mainText:
+    'Ailelerimizin sevgisiyle bu ozel gunumuzde sizleri yanimizda gormekten buyuk mutluluk duyariz.',
+  themeColor: '#b0425f',
+  musicUrl: 'https://www.youtube.com/watch?v=8UVNT4wvIGY',
+  textFallbacks: [
+    'Hikayemiz universitede basladi, her yil daha guzel bir ani biriktirdik.',
+    'Program: Karsilama 19:00, yuzuk toreni 20:00, kutlama 21:00.',
+    'Katiliminiz bizim icin cok degerli. Sevgilerimizle.',
+  ],
+}
+
 function textBlockKeys(template) {
   const rules = template?.configSchema?.contentRules
   const max = typeof rules?.maxTexts === 'number' ? rules.maxTexts : 3
@@ -28,6 +45,10 @@ const KEY_LABELS = {
   intro: 'Giriş metni',
   story: 'Hikaye',
   footer: 'Alt bilgi',
+  welcome: 'Karşılama',
+  details: 'Detaylar',
+  fun: 'Sürpriz / eğlence notu',
+  message: 'Mesajınız',
 }
 
 function fileDedupeKey(f) {
@@ -70,6 +91,7 @@ export function CreatePage() {
   const [submitting, setSubmitting] = useState(false)
   const [formError, setFormError] = useState('')
   const [formInfo, setFormInfo] = useState('')
+  const [devPrefilled, setDevPrefilled] = useState(false)
 
   const templateIdParam = searchParams.get('templateId')
 
@@ -115,6 +137,30 @@ export function CreatePage() {
       return next
     })
   }, [template, keys])
+
+  useEffect(() => {
+    if (!DEV_PREFILL_ENABLED || !template || devPrefilled) return
+
+    if (!slug) setSlug(DEV_PREFILL.slug)
+    if (!title) setTitle(DEV_PREFILL.title)
+    if (!eventDate) setEventDate(DEV_PREFILL.eventDate)
+    if (!mainText) setMainText(DEV_PREFILL.mainText)
+    if (!themeColor) setThemeColor(DEV_PREFILL.themeColor)
+    if (!musicUrl) setMusicUrl(DEV_PREFILL.musicUrl)
+
+    if (keys.length > 0) {
+      setTextByKey((prev) => {
+        const next = { ...prev }
+        keys.forEach((k, i) => {
+          const current = (next[k] || '').trim()
+          if (!current) next[k] = DEV_PREFILL.textFallbacks[i] || DEV_PREFILL.textFallbacks.at(-1) || ''
+        })
+        return next
+      })
+    }
+
+    setDevPrefilled(true)
+  }, [template, keys, devPrefilled, slug, title, eventDate, mainText, themeColor, musicUrl])
 
   const maxPhotos = template?.configSchema?.contentRules?.maxPhotos
 

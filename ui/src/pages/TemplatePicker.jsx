@@ -7,22 +7,49 @@ const LAYOUT_LABEL = {
   'split-hero': 'Yan yana galeri',
   stacked: 'Üst üste kartlar',
   minimal: 'Sade düzen',
+  magazine: 'Dergi + yan sütun',
+  timeline: 'Zaman çizelgesi',
+  'split-scroll': 'Bölünmüş anılar',
+  letter: 'Mektup',
+  party: 'Parti / neon',
+  scrapbook: 'Anı defteri',
+  journey: 'Yolculuk hikâyesi',
+  beauty: 'Beauty (TemplateMo)',
+}
+
+const VISUAL_HINT = {
+  'wedding-gold': 'Premium düğün',
+  'party-neon': 'Neon parti',
+  scrapbook: 'Anı defteri stili',
+  'romantic-burgundy': 'Romantik bordo',
+  'letter-parchment': 'Mektup kağıdı',
 }
 
 function layoutHint(tpl) {
   const layout = tpl?.configSchema?.layout
-  return (typeof layout === 'string' && LAYOUT_LABEL[layout]) || layout || 'Özel'
+  const base = (typeof layout === 'string' && LAYOUT_LABEL[layout]) || layout || 'Özel'
+  const vt = tpl?.configSchema?.visualTheme
+  const hint = typeof vt === 'string' ? VISUAL_HINT[vt] : ''
+  return hint ? `${base} · ${hint}` : base
+}
+
+const PREVIEW_BY_LAYOUT = {
+  minimal: 'https://images.unsplash.com/photo-1511795409834-ef04bbd61622?w=600&q=80',
+  stacked: 'https://images.unsplash.com/photo-1465495976277-4387d4b0b4c6?w=600&q=80',
+  magazine: 'https://images.unsplash.com/photo-1519741497674-611481863552?w=600&q=80',
+  timeline: 'https://images.unsplash.com/photo-1522673607200-164d1b6ce486?w=600&q=80',
+  'split-scroll': 'https://images.unsplash.com/photo-1529636798458-92182e662485?w=600&q=80',
+  letter: 'https://images.unsplash.com/photo-1583939003579-730e3918a45a?w=600&q=80',
+  party: 'https://images.unsplash.com/photo-1530103862676-de8c9debad1d?w=600&q=80',
+  scrapbook: 'https://images.unsplash.com/photo-1504196601072-998a40704068?w=600&q=80',
+  journey: 'https://images.unsplash.com/photo-1522673607200-164d1b6ce486?w=600&q=80',
+  beauty: 'https://images.unsplash.com/photo-1519741497674-611481863552?w=600&q=80',
 }
 
 function previewSrc(tpl) {
   if (tpl.previewImageUrl) return tpl.previewImageUrl
   const layout = tpl?.configSchema?.layout
-  if (layout === 'minimal') {
-    return 'https://images.unsplash.com/photo-1511795409834-ef04bbd61622?w=600&q=80'
-  }
-  if (layout === 'stacked') {
-    return 'https://images.unsplash.com/photo-1465495976277-4387d4b0b4c6?w=600&q=80'
-  }
+  if (typeof layout === 'string' && PREVIEW_BY_LAYOUT[layout]) return PREVIEW_BY_LAYOUT[layout]
   return 'https://images.unsplash.com/photo-1519741497674-611481863552?w=600&q=80'
 }
 
