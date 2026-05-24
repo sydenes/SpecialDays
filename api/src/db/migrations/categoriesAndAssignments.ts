@@ -3,7 +3,7 @@ import type { Pool } from "pg";
 /**
  * Etkinlik kategorileri + sablon (A/B/C) iliskisi.
  * tpl-classic=A, tpl-gallery=B, tpl-minimal=C
- * Dugun: B+C, Dogum gunu: A+C, Yildonumu: sadece C
+ * Kategori basina 1 temel sablon; tpl-beauty trim migrasyonunda eklenir.
  */
 const STEPS: string[] = [
   `
@@ -36,7 +36,7 @@ const STEPS: string[] = [
      'Klasik kartlar',
      'shared',
      NULL,
-     '{"layout":"stacked","contentRules":{"maxPhotos":5,"maxTexts":2},"textBlocks":[{"key":"welcome","label":"Karşılama"},{"key":"details","label":"Detaylar"}],"optionalSettings":{"themeColor":true,"musicUrl":true},"components":{"countdown":true,"guestbook":true}}'::jsonb,
+     '{"layout":"stacked","contentRules":{"maxPhotos":10,"maxTexts":2},"textBlocks":[{"key":"welcome","label":"Karşılama"},{"key":"details","label":"Detaylar"}],"optionalSettings":{"themeColor":true,"musicUrl":true},"components":{"countdown":true,"guestbook":true}}'::jsonb,
      TRUE
    )
    ON CONFLICT (code) DO UPDATE SET
@@ -51,7 +51,7 @@ const STEPS: string[] = [
      'Galeri & hikaye',
      'shared',
      NULL,
-     '{"layout":"split-hero","contentRules":{"maxPhotos":10,"maxTexts":3},"textBlocks":[{"key":"intro","label":"Giriş metni"},{"key":"story","label":"Hikaye"},{"key":"footer","label":"Alt bilgi"}],"optionalSettings":{"themeColor":true,"musicUrl":true},"components":{"countdown":true,"guestbook":true}}'::jsonb,
+     '{"layout":"split-hero","contentRules":{"maxPhotos":10,"maxTexts":3,"heroPoolMax":6},"textBlocks":[{"key":"intro","label":"Giriş metni"},{"key":"story","label":"Hikaye"},{"key":"footer","label":"Alt bilgi"}],"optionalSettings":{"themeColor":true,"musicUrl":true},"components":{"countdown":true,"guestbook":true}}'::jsonb,
      TRUE
    )
    ON CONFLICT (code) DO UPDATE SET
@@ -66,7 +66,7 @@ const STEPS: string[] = [
      'Sade & zarif',
      'shared',
      NULL,
-     '{"layout":"minimal","contentRules":{"maxPhotos":3,"maxTexts":1},"textBlocks":[{"key":"message","label":"Mesajınız"}],"optionalSettings":{"themeColor":true,"musicUrl":true},"components":{"countdown":true,"guestbook":true}}'::jsonb,
+     '{"layout":"minimal","contentRules":{"maxPhotos":10,"maxTexts":3,"heroPoolMax":6},"textBlocks":[{"key":"message","label":"Mesajınız"}],"optionalSettings":{"themeColor":true,"musicUrl":true},"components":{"countdown":true,"guestbook":true}}'::jsonb,
      TRUE
    )
    ON CONFLICT (code) DO UPDATE SET
@@ -85,25 +85,23 @@ const STEPS: string[] = [
      sort_order = EXCLUDED.sort_order,
      is_active = EXCLUDED.is_active`,
 
-  // Dugun: B (gallery) + C (minimal)
+  // Dugun: galeri & hikaye
   `INSERT INTO category_templates (category_id, template_id, sort_order)
-   SELECT c.id, t.id, v.ord
+   SELECT c.id, t.id, 1
    FROM page_categories c
-   CROSS JOIN (VALUES ('wedding', 'tpl-gallery', 1), ('wedding', 'tpl-minimal', 2)) AS v(cat, tcode, ord)
-   JOIN templates t ON t.code = v.tcode
-   WHERE c.code = v.cat
+   JOIN templates t ON t.code = 'tpl-gallery'
+   WHERE c.code = 'wedding'
    ON CONFLICT (category_id, template_id) DO UPDATE SET sort_order = EXCLUDED.sort_order`,
 
-  // Dogum gunu: A + C
+  // Dogum gunu: klasik kartlar
   `INSERT INTO category_templates (category_id, template_id, sort_order)
-   SELECT c.id, t.id, v.ord
+   SELECT c.id, t.id, 1
    FROM page_categories c
-   CROSS JOIN (VALUES ('birthday', 'tpl-classic', 1), ('birthday', 'tpl-minimal', 2)) AS v(cat, tcode, ord)
-   JOIN templates t ON t.code = v.tcode
-   WHERE c.code = v.cat
+   JOIN templates t ON t.code = 'tpl-classic'
+   WHERE c.code = 'birthday'
    ON CONFLICT (category_id, template_id) DO UPDATE SET sort_order = EXCLUDED.sort_order`,
 
-  // Yildonumu: sadece C
+  // Yildonumu: sade & zarif
   `INSERT INTO category_templates (category_id, template_id, sort_order)
    SELECT c.id, t.id, 1
    FROM page_categories c

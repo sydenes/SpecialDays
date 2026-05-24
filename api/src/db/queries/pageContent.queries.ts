@@ -55,18 +55,30 @@ export async function upsertPageContentByPageId(pageId: string, input: UpsertPag
     configSchema: TemplateRuleConfig | null;
   };
 
-  const maxPhotos = pageInfo.configSchema?.contentRules?.maxPhotos;
-  const maxTexts = pageInfo.configSchema?.contentRules?.maxTexts;
+  const maxPhotosRaw = pageInfo.configSchema?.contentRules?.maxPhotos;
+  const maxTextsRaw = pageInfo.configSchema?.contentRules?.maxTexts;
+  const maxPhotos =
+    typeof maxPhotosRaw === "number"
+      ? maxPhotosRaw
+      : typeof maxPhotosRaw === "string"
+        ? parseInt(maxPhotosRaw, 10)
+        : undefined;
+  const maxTexts =
+    typeof maxTextsRaw === "number"
+      ? maxTextsRaw
+      : typeof maxTextsRaw === "string"
+        ? parseInt(maxTextsRaw, 10)
+        : undefined;
 
   if (photos != null) {
-    if (typeof maxPhotos === "number" && photos.length > maxPhotos) {
-      throw new Error(`Template allows maximum ${maxPhotos} photos`);
+    if (typeof maxPhotos === "number" && !Number.isNaN(maxPhotos) && photos.length > maxPhotos) {
+      throw new Error(`Bu şablonda en fazla ${maxPhotos} fotoğraf kullanabilirsiniz.`);
     }
   }
 
   if (texts != null) {
-    if (typeof maxTexts === "number" && texts.length > maxTexts) {
-      throw new Error(`Template allows maximum ${maxTexts} text blocks`);
+    if (typeof maxTexts === "number" && !Number.isNaN(maxTexts) && texts.length > maxTexts) {
+      throw new Error(`Bu şablonda en fazla ${maxTexts} metin bloğu kullanılabilir.`);
     }
   }
 

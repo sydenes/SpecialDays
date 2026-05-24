@@ -306,6 +306,15 @@ export function DashboardPage() {
           ))}
         </select>
 
+        {selectedPage?.slug ? (
+          <p style={{ margin: '8px 0 0' }}>
+            Düzenle:{' '}
+            <Link to={`/edit/${selectedPage.slug}`}>/edit/{selectedPage.slug}</Link>
+            {' · '}
+            <Link to={`/${selectedPage.slug}`}>Canlı sayfa</Link>
+          </p>
+        ) : null}
+
         {selectedTemplate && (
           <p>
             Template limits {'->'} maxPhotos: <strong>{ruleInfo.maxPhotos ?? '-'}</strong>, maxTexts:{' '}

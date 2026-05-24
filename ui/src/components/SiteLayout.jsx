@@ -1,7 +1,7 @@
 import { Link, Outlet, useLocation } from 'react-router-dom'
 import './SiteLayout.css'
 
-const RESERVED_SINGLE = new Set(['templates', 'create', 'dashboard'])
+const RESERVED_SINGLE = new Set(['templates', 'create', 'edit', 'dashboard'])
 
 export function SiteLayout() {
   const { pathname } = useLocation()

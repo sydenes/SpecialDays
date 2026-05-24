@@ -119,7 +119,7 @@ export type PagePhotoContentRow = {
 export async function getPageTemplatePhotoLimit(pageId: string): Promise<number | null> {
   const { rows } = await pool.query(
     `
-    SELECT (t.config_schema->'contentRules'->>'maxPhotos')::int AS "max"
+    SELECT (t.config_schema #>> '{contentRules,maxPhotos}')::int AS "max"
     FROM special_pages sp
     JOIN templates t ON t.id = sp.template_id
     WHERE sp.id = $1

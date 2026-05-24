@@ -4,6 +4,7 @@ import {
   getPageContent,
   listPages,
   getPage,
+  getPageBySlug,
   postPage,
   patchPage,
   removePage,
@@ -25,6 +26,7 @@ const uploadPhoto = multer({
 
 // /api/dashboard/pages/*
 router.get("/api/dashboard/pages", listPages);
+router.get("/api/dashboard/pages/by-slug/:slug", getPageBySlug);
 router.get("/api/dashboard/pages/:id", getPage);
 router.post("/api/dashboard/pages", postPage);
 router.patch("/api/dashboard/pages/:id", patchPage);

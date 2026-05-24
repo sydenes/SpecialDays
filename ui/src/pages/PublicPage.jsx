@@ -68,6 +68,15 @@ function resolveVisualTheme(cfg) {
   return typeof t === 'string' ? t : 'default'
 }
 
+function resolveHeroPoolMax(cfg) {
+  const rules = cfg?.contentRules
+  const explicit = rules?.heroPoolMax
+  if (typeof explicit === 'number' && explicit > 0) return Math.min(12, explicit)
+  const maxPhotos = rules?.maxPhotos
+  if (typeof maxPhotos === 'number' && maxPhotos > 0) return Math.min(12, maxPhotos)
+  return 6
+}
+
 function isLikelyBirthdayPage(page) {
   const raw = `${page?.title || ''} ${page?.mainText || ''}`.toLocaleLowerCase('tr-TR')
   return /(doğum|dogum|iyi ki doğdun|iyi ki dogdun|birthday)/i.test(raw)
@@ -232,9 +241,23 @@ export function PublicPage() {
   const showCountdown = cfg?.components?.countdown !== false && page?.eventDate && cd
   const showGuestbook = cfg?.components?.guestbook !== false
 
-  const heroPhoto = photos[0]
-  const thumbPhotos = photos.slice(heroPhoto ? 1 : 0, heroPhoto ? 3 : 2)
-  const restPhotos = photos.slice(heroPhoto ? 1 : 0)
+  const [activeHeroIndex, setActiveHeroIndex] = useState(0)
+
+  const heroPoolMax = resolveHeroPoolMax(cfg)
+  const heroPool = useMemo(
+    () => photos.slice(0, Math.min(photos.length, heroPoolMax)),
+    [photos, heroPoolMax]
+  )
+
+  useEffect(() => {
+    setActiveHeroIndex(0)
+  }, [slug, photos])
+
+  const safeHeroIndex = heroPool.length > 0 ? Math.min(activeHeroIndex, heroPool.length - 1) : 0
+  const heroPhoto = heroPool[safeHeroIndex] ?? null
+  const thumbPhotos = heroPool.filter((_, i) => i !== safeHeroIndex)
+  const restPhotos = photos.length > heroPool.length ? photos.slice(heroPool.length) : []
+  const heroThumbSwap = layout === 'split-hero' && thumbPhotos.length > 0
 
   const onSubmitMessage = async (e) => {
     e.preventDefault()
@@ -348,19 +371,44 @@ export function PublicPage() {
           </div>
           <div className="published-premium-visual">
             {heroPhoto ? (
-              <img
+              <motion.img
+                key={heroPhoto.id}
                 className="published-hero-full published-hero-full--premium"
                 src={photoSrc(heroPhoto.fileUrl || heroPhoto.thumbnailUrl)}
                 alt={heroPhoto.caption || ''}
+                initial={prefersReducedMotion ? false : { opacity: 0.4 }}
+                animate={{ opacity: 1 }}
+                transition={{ duration: 0.35, ease: 'easeOut' }}
               />
             ) : (
-              <div className="published-hero-full published-hero-placeholder">Fotoğraf ekleyin</div>
+              <motion.div className="published-hero-empty-visual" aria-hidden />
             )}
             {thumbPhotos.length > 0 ? (
               <div className="published-floating-thumbs">
-                {thumbPhotos.map((p) => (
-                  <img key={p.id} src={photoSrc(p.thumbnailUrl || p.fileUrl)} alt={p.caption || ''} />
-                ))}
+                {thumbPhotos.map((p) => {
+                  const poolIndex = heroPool.findIndex((x) => x.id === p.id)
+                  const thumb = (
+                    <img src={photoSrc(p.thumbnailUrl || p.fileUrl)} alt={p.caption || ''} />
+                  )
+                  if (!heroThumbSwap) {
+                    return (
+                      <div key={p.id} className="published-floating-thumb-static">
+                        {thumb}
+                      </div>
+                    )
+                  }
+                  return (
+                    <button
+                      key={p.id}
+                      type="button"
+                      className="published-floating-thumb-btn"
+                      onClick={() => setActiveHeroIndex(poolIndex)}
+                      aria-label={p.caption ? `${p.caption} — büyük göster` : 'Bu fotoğrafı büyük göster'}
+                    >
+                      {thumb}
+                    </button>
+                  )
+                })}
               </div>
             ) : null}
           </div>

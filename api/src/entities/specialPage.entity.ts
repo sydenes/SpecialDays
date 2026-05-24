@@ -89,6 +89,32 @@ export function mapSpecialPageRow(row: {
 
 export const specialPagesEntityAdmin = {
   table: "special_pages",
+  selectBySlug: `
+    SELECT
+      sp.id,
+      sp.owner_user_id AS "ownerUserId",
+      sp.slug,
+      sp.template_id AS "templateId",
+      t.code AS "templateCode",
+      t.name AS "templateName",
+      t.category AS "templateCategory",
+      sp.title,
+      sp.event_type AS "eventType",
+      sp.event_date AS "eventDate",
+      sp.main_text AS "mainText",
+      sp.hero_image_url AS "heroImageUrl",
+      sp.is_public AS "isPublic",
+      sp.access_password_hash AS "accessPasswordHash",
+      sp.custom_domain AS "customDomain",
+      sp.status,
+      sp.view_count AS "viewCount",
+      sp.settings AS "settings",
+      sp.published_at AS "publishedAt",
+      sp.created_at AS "createdAt",
+      sp.updated_at AS "updatedAt"
+    FROM special_pages sp
+    JOIN templates t ON t.id = sp.template_id
+  `,
   selectById: `
     SELECT
       sp.id,

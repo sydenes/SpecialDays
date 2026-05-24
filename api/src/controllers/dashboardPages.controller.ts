@@ -4,6 +4,7 @@ import {
   createPage,
   deletePage,
   getPageByIdAdmin,
+  getPageBySlugAdmin,
   listPagesByOwner,
   updatePage,
   type CreatePageInput,
@@ -47,6 +48,18 @@ export async function getPage(req: Request, res: Response, next: NextFunction) {
     const id = normalizeParamToString(req.params.id);
     if (!id) return res.status(400).json({ error: "id is required" });
     const page = await getPageByIdAdmin(id);
+    if (!page) return res.status(404).json({ error: "Page not found" });
+    return res.json(page);
+  } catch (err) {
+    return next(err);
+  }
+}
+
+export async function getPageBySlug(req: Request, res: Response, next: NextFunction) {
+  try {
+    const slug = normalizeParamToString(req.params.slug);
+    if (!slug) return res.status(400).json({ error: "slug is required" });
+    const page = await getPageBySlugAdmin(slug);
     if (!page) return res.status(404).json({ error: "Page not found" });
     return res.json(page);
   } catch (err) {
@@ -223,7 +236,7 @@ export async function uploadDashboardPagePhoto(req: Request, res: Response, next
     const maxPhotos = await getPageTemplatePhotoLimit(id);
     const count = await countPhotosForPage(id);
     if (typeof maxPhotos === "number" && count >= maxPhotos) {
-      return res.status(400).json({ error: `Template allows maximum ${maxPhotos} photos` });
+      return res.status(400).json({ error: `Bu şablonda en fazla ${maxPhotos} fotoğraf kullanabilirsiniz.` });
     }
 
     const created = await insertInlinePagePhoto(id, file.buffer, file.mimetype);

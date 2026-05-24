@@ -430,6 +430,18 @@
   white-space: nowrap;
 }
 
+.photo-pick-list--existing li {
+  align-items: center;
+}
+
+.photo-pick-thumb {
+  width: 48px;
+  height: 48px;
+  border-radius: 8px;
+  object-fit: cover;
+  flex-shrink: 0;
+}
+
 .btn-text-remove {
   flex-shrink: 0;
   background: transparent;
@@ -439,6 +451,101 @@
   font-size: 0.82rem;
   cursor: pointer;
   padding: 0.2rem 0.4rem;
+}
+
+.create-photos-field {
+  display: grid;
+  gap: 0.5rem;
+  margin-bottom: 0.25rem;
+}
+
+.create-photos-label {
+  font-weight: 600;
+  color: #2a2438;
+}
+
+.create-photos-required {
+  margin: 0;
+  color: #9a2f2f;
+  font-weight: 500;
+}
+
+.stock-photo-picker {
+  margin-top: 0.75rem;
+  padding: 1rem;
+  border-radius: 12px;
+  background: #faf8fc;
+  border: 1px solid #ece8f0;
+}
+
+.stock-photo-picker-title {
+  margin: 0 0 0.65rem;
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: #4a4458;
+}
+
+.stock-photo-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+  gap: 0.65rem;
+}
+
+.stock-photo-card {
+  position: relative;
+  padding: 0;
+  border: 2px solid transparent;
+  border-radius: 10px;
+  overflow: hidden;
+  cursor: pointer;
+  background: #fff;
+  box-shadow: 0 2px 10px rgba(42, 36, 56, 0.08);
+  transition: border-color 0.2s, transform 0.15s, box-shadow 0.2s;
+}
+
+.stock-photo-card:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 16px rgba(42, 36, 56, 0.12);
+}
+
+.stock-photo-card--selected {
+  border-color: #c9a46a;
+  box-shadow: 0 0 0 3px rgba(201, 164, 106, 0.25);
+}
+
+.stock-photo-card:disabled {
+  opacity: 0.65;
+  cursor: wait;
+}
+
+.stock-photo-card img {
+  display: block;
+  width: 100%;
+  aspect-ratio: 4 / 3;
+  object-fit: cover;
+}
+
+.stock-photo-card-label {
+  display: block;
+  padding: 0.35rem 0.4rem;
+  font-size: 0.72rem;
+  color: #5c5566;
+  text-align: center;
+  line-height: 1.2;
+}
+
+.stock-photo-card-badge {
+  position: absolute;
+  top: 0.35rem;
+  right: 0.35rem;
+  font-size: 0.65rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  padding: 0.2rem 0.4rem;
+  border-radius: 4px;
+  background: rgba(201, 164, 106, 0.92);
+  color: #fff;
 }
 
 .btn-text-remove:hover {

@@ -42,6 +42,12 @@ export async function getPageByIdAdmin(id: string): Promise<SpecialPageAdmin | n
   return mapSpecialPageAdminRow(rows[0] as any);
 }
 
+export async function getPageBySlugAdmin(slug: string): Promise<SpecialPageAdmin | null> {
+  const { rows } = await pool.query(`${specialPagesEntityAdmin.selectBySlug} WHERE sp.slug = $1`, [slug]);
+  if (rows.length === 0) return null;
+  return mapSpecialPageAdminRow(rows[0] as any);
+}
+
 export async function createPage(input: CreatePageInput): Promise<SpecialPageAdmin> {
   const {
     ownerUserId,
@@ -106,12 +112,6 @@ export async function createPage(input: CreatePageInput): Promise<SpecialPageAdm
   const created = await getPageBySlugAdmin(slug);
   if (!created) throw new Error("Page create failed (not found after insert)");
   return created;
-}
-
-export async function getPageBySlugAdmin(slug: string): Promise<SpecialPageAdmin | null> {
-  const { rows } = await pool.query(`${specialPagesEntityAdmin.selectById} WHERE sp.slug = $1`, [slug]);
-  if (rows.length === 0) return null;
-  return mapSpecialPageAdminRow(rows[0] as any);
 }
 
 export async function updatePage(id: string, input: UpdatePageInput): Promise<SpecialPageAdmin | null> {
