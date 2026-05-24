@@ -5,6 +5,7 @@ import { CategorySelect } from './pages/CategorySelect.jsx'
 import { TemplatePicker } from './pages/TemplatePicker.jsx'
 import { CreatePage } from './pages/CreatePage.jsx'
 import { EditPage } from './pages/EditPage.jsx'
+import { PublishSuccessPage } from './pages/PublishSuccessPage.jsx'
 import { PublicPage } from './pages/PublicPage.jsx'
 import { DashboardPage } from './pages/DashboardPage.jsx'
 import './App.css'
@@ -20,6 +21,7 @@ export default function App() {
         </Route>
         <Route path="create" element={<CreatePage />} />
         <Route path="edit/:slug" element={<EditPage />} />
+        <Route path="published/:slug" element={<PublishSuccessPage />} />
         <Route path="dashboard" element={<DashboardPage />} />
         <Route path=":slug" element={<PublicPage />} />
       </Route>

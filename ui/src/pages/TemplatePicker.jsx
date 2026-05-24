@@ -1,7 +1,9 @@
 import { useEffect, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { API_BASE } from '../lib/api.js'
+import { TemplatePreviewModal } from './pageEditor/TemplatePreviewModal.jsx'
 import './flowPages.css'
+import './pageEditor/pageEditor.css'
 
 const LAYOUT_LABEL = {
   'split-hero': 'Yan yana galeri',
@@ -69,6 +71,7 @@ export function TemplatePicker() {
   const [items, setItems] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
+  const [previewTemplate, setPreviewTemplate] = useState(null)
 
   useEffect(() => {
     let cancelled = false
@@ -125,9 +128,14 @@ export function TemplatePicker() {
                 {layoutHint(tpl)} · {tpl.code}
               </p>
               {formatLimits(tpl) && <p className="template-card-limits">{formatLimits(tpl)}</p>}
-              <button type="button" className="btn btn-primary btn-select" onClick={() => onSelect(tpl)}>
-                Seç
-              </button>
+              <div className="template-card-actions">
+                <button type="button" className="btn btn-preview-template" onClick={() => setPreviewTemplate(tpl)}>
+                  Önizle
+                </button>
+                <button type="button" className="btn btn-primary btn-select" onClick={() => onSelect(tpl)}>
+                  Seç
+                </button>
+              </div>
             </div>
           </article>
         ))}
@@ -136,6 +144,18 @@ export function TemplatePicker() {
       <p style={{ marginTop: '2rem' }}>
         <Link to="/templates">← Kategori seçimine dön</Link>
       </p>
+
+      {previewTemplate ? (
+        <TemplatePreviewModal
+          template={previewTemplate}
+          categoryCode={categoryCode}
+          onClose={() => setPreviewTemplate(null)}
+          onSelect={() => {
+            onSelect(previewTemplate)
+            setPreviewTemplate(null)
+          }}
+        />
+      ) : null}
     </section>
   )
 }

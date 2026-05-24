@@ -444,8 +444,10 @@ export function usePageForm({ mode, editSlug }) {
         return
       }
 
-      setFormInfo(isEdit ? 'Değişiklikler kaydedildi.' : 'Sayfanız yayında.')
-      navigate(`/${s}`, { replace: true })
+      navigate(`/published/${s}`, {
+        replace: true,
+        state: { title: t, wasEdit: isEdit },
+      })
     } catch (err) {
       console.error('Sayfa kaydetme hatası:', err)
       setFormError('Sunucuya bağlanılamadı.')

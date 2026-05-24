@@ -3,7 +3,10 @@ import { Link } from 'react-router-dom'
 import { photoSrc } from '../../lib/photoUrl.js'
 import { stockPhotoSrc } from '../../lib/defaultPhotos.js'
 import { fileDedupeKey, labelForKey } from './pageFormUtils.js'
+import { PageLivePreview } from './PageLivePreview.jsx'
+import { usePreviewPhotoList } from './usePreviewPhotoList.js'
 import '../flowPages.css'
+import './pageEditor.css'
 
 export function PageFormView({
   isEdit,
@@ -49,6 +52,8 @@ export function PageFormView({
   toggleStockPhoto,
   onSubmit,
 }) {
+  const photoItems = usePreviewPhotoList(existingPhotos, photosToDelete, photoFiles)
+
   const toastLayer =
     (formError || formInfo) &&
     createPortal(
@@ -74,7 +79,7 @@ export function PageFormView({
     )
 
   return (
-    <section className="flow-section">
+    <section className="flow-section page-editor-section">
       {toastLayer}
       <h1>{isEdit ? 'Sayfanızı düzenleyin' : 'Sayfanızı oluşturun'}</h1>
       <p className="flow-lead">
@@ -87,6 +92,8 @@ export function PageFormView({
         ) : null}
       </p>
 
+      <div className="page-editor-layout">
+        <div className="page-editor-form-col">
       <form className="create-form" onSubmit={onSubmit} noValidate autoComplete="off">
         <label>
           Sayfa adresi (slug)
@@ -240,6 +247,20 @@ export function PageFormView({
           <Link to={categoryFromPick ? `/templates/${categoryFromPick}` : '/templates'}>Başka şablon</Link>
         )}
       </p>
+        </div>
+
+        <PageLivePreview
+          template={template}
+          title={title}
+          eventDate={eventDate}
+          mainText={mainText}
+          themeColor={themeColor}
+          musicUrl={musicUrl}
+          textByKey={textByKey}
+          keys={keys}
+          photoItems={photoItems}
+        />
+      </div>
     </section>
   )
 }
