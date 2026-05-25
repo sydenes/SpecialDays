@@ -303,6 +303,33 @@
   cursor: not-allowed;
 }
 
+.btn-draft {
+  background: #fff;
+  color: #4a3f35;
+  border: 1px solid #d8d0e0;
+}
+
+.btn-draft:hover:not(:disabled) {
+  border-color: #c9a46a;
+  background: #faf8fc;
+}
+
+.form-actions-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+  margin-top: 0.5rem;
+}
+
+.form-actions-hint {
+  margin: 0.25rem 0 0;
+  line-height: 1.5;
+}
+
+.page-status-hint {
+  display: inline;
+}
+
 .btn-select {
   margin-top: 0.75rem;
   align-self: flex-start;

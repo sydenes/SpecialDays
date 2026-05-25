@@ -13,6 +13,7 @@ import {
   resolveVisualTheme,
   THEME_WRAP_CLASS,
 } from './publishedUtils.js'
+import { GuestMessageList } from './GuestMessageList.jsx'
 import '../PublicPage.css'
 
 function useCountdown(target) {
@@ -61,7 +62,9 @@ function CountdownRow({ cd, theme, compact }) {
 function GuestBlock({
   pageTitle,
   theme,
+  messages,
   guestError,
+  guestSuccess,
   authorName,
   setAuthorName,
   authorEmail,
@@ -72,13 +75,24 @@ function GuestBlock({
   onSubmit,
   compact,
   previewMode,
+  hideHeader = false,
+  hideMessages = false,
 }) {
   return (
     <div className={`guest-section ${compact ? 'guest-section--compact' : ''}`}>
-      <h3>{pageTitle ? `${pageTitle} için mesaj bırakın` : 'Mesaj bırakın'}</h3>
+      {!hideHeader ? (
+        <h3>{pageTitle ? `${pageTitle} için mesaj bırakın` : 'Mesaj bırakın'}</h3>
+      ) : null}
       {previewMode ? (
         <p className="form-hint published-preview-hint">Önizleme — misafir defteri yayınlandıktan sonra açılır.</p>
       ) : null}
+      {!hideMessages && !previewMode && messages?.length > 0 ? (
+        <div className="guest-messages-block">
+          <h4 className="guest-messages-heading">Mesajlar</h4>
+          <GuestMessageList messages={messages} />
+        </div>
+      ) : null}
+      {guestSuccess ? <p className="guest-success">{guestSuccess}</p> : null}
       {guestError ? <p className="published-error published-error--inline">{guestError}</p> : null}
       <form
         className="guest-form"
@@ -150,9 +164,20 @@ function SaveTheDateButton({ page, theme, label, previewMode }) {
  *   embedded?: boolean,
  * }} props
  */
-export function PublishedPageView({ page, photos, texts, slug = null, previewMode = false, embedded = false }) {
+export function PublishedPageView({
+  page,
+  photos,
+  texts,
+  messages: messagesProp = [],
+  slug = null,
+  previewMode = false,
+  draftPreview = false,
+  embedded = false,
+}) {
   const prefersReducedMotion = useReducedMotion()
   const [guestError, setGuestError] = useState('')
+  const [guestSuccess, setGuestSuccess] = useState('')
+  const [localMessages, setLocalMessages] = useState(messagesProp)
   const [authorName, setAuthorName] = useState('')
   const [authorEmail, setAuthorEmail] = useState('')
   const [messageText, setMessageText] = useState('')
@@ -176,6 +201,10 @@ export function PublishedPageView({ page, photos, texts, slug = null, previewMod
 
   const showCountdown = cfg?.components?.countdown !== false && page?.eventDate && cd
   const showGuestbook = cfg?.components?.guestbook !== false
+
+  useEffect(() => {
+    setLocalMessages(messagesProp)
+  }, [messagesProp])
 
   const heroPoolMax = resolveHeroPoolMax(cfg)
   const heroPool = useMemo(
@@ -214,10 +243,17 @@ export function PublishedPageView({ page, photos, texts, slug = null, previewMod
           messageText: text,
         }),
       })
+      const data = await res.json().catch(() => ({}))
       if (!res.ok) throw new Error('fail')
       setMessageText('')
+      setAuthorName('')
+      setAuthorEmail('')
+      setGuestSuccess(
+        data.notice || 'Mesajınız alındı. Sayfa sahibi onayladıktan sonra burada görünecek.'
+      )
     } catch {
       setGuestError('Mesaj gönderilemedi.')
+      setGuestSuccess('')
     } finally {
       setPosting(false)
     }
@@ -236,7 +272,7 @@ export function PublishedPageView({ page, photos, texts, slug = null, previewMod
         className={`published-wrap published-wrap--beauty-fullbleed ${themeWrap}${embedClass}${previewClass}`}
         style={{ '--published-accent': theme, maxWidth: '100%', width: '100%', padding: 0 }}
       >
-        {previewMode ? (
+        {previewMode && !draftPreview ? (
           <div className="published-preview-badge" aria-hidden>
             Canlı önizleme
           </div>
@@ -250,7 +286,9 @@ export function PublishedPageView({ page, photos, texts, slug = null, previewMod
           cd={cd}
           showCountdown={showCountdown}
           showGuestbook={showGuestbook}
+          messages={localMessages}
           guestError={guestError}
+          guestSuccess={guestSuccess}
           authorName={authorName}
           setAuthorName={setAuthorName}
           authorEmail={authorEmail}
@@ -281,7 +319,7 @@ export function PublishedPageView({ page, photos, texts, slug = null, previewMod
 
   return (
     <div className={wrapClass} style={{ '--published-accent': theme }}>
-      {previewMode ? (
+      {previewMode && !draftPreview ? (
         <div className="published-preview-badge" aria-hidden>
           Canlı önizleme
         </div>
@@ -390,15 +428,25 @@ export function PublishedPageView({ page, photos, texts, slug = null, previewMod
         ) : null}
 
         {showGuestbook ? (
-          <motion.section className="published-message-shell" {...fadeUp}>
-            <div className="published-message-note">
-              <h3>{page.title} için bir not bırak</h3>
-              <p>Mesajin bu sayfadaki en guzel hatiralardan biri olacak.</p>
+          <motion.section className="published-message-shell published-message-shell--split" {...fadeUp}>
+            <div className="published-guestbook-left">
+              <div className="published-message-note">
+                <h3>{page.title} için bir not bırak</h3>
+                <p>Mesajin bu sayfadaki en guzel hatiralardan biri olacak.</p>
+              </div>
+              {!previewMode && localMessages.length > 0 ? (
+                <div className="guest-messages-scroll" aria-label="Onaylı mesajlar">
+                  <p className="guest-messages-scroll-label">Mesajlar</p>
+                  <GuestMessageList messages={localMessages} />
+                </div>
+              ) : null}
             </div>
             <GuestBlock
               pageTitle={page.title}
               theme={theme}
+              messages={localMessages}
               guestError={guestError}
+              guestSuccess={guestSuccess}
               authorName={authorName}
               setAuthorName={setAuthorName}
               authorEmail={authorEmail}
@@ -409,6 +457,8 @@ export function PublishedPageView({ page, photos, texts, slug = null, previewMod
               onSubmit={onSubmitMessage}
               compact
               previewMode={previewMode}
+              hideHeader
+              hideMessages
             />
           </motion.section>
         ) : null}

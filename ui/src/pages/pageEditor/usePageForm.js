@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useLocation, useNavigate, useSearchParams } from 'react-router-dom'
-import { API_BASE, DEFAULT_OWNER_USER_ID } from '../../lib/api.js'
+import { API_BASE, apiFetch } from '../../lib/api.js'
 import {
   getStockPhotosForCategory,
   stockFileName,
@@ -47,11 +47,12 @@ export function usePageForm({ mode, editSlug }) {
   const [textByKey, setTextByKey] = useState({})
   const [themeColor, setThemeColor] = useState('#c41e3a')
   const [musicUrl, setMusicUrl] = useState('')
-  const [ownerUserId, setOwnerUserId] = useState(() => DEFAULT_OWNER_USER_ID)
   const [submitting, setSubmitting] = useState(false)
   const [formError, setFormError] = useState('')
   const [formInfo, setFormInfo] = useState('')
   const [devPrefilled, setDevPrefilled] = useState(false)
+  const [pageStatus, setPageStatus] = useState('draft')
+  const [previewToken, setPreviewToken] = useState('')
 
   const templateIdParam = searchParams.get('templateId')
   const stockCategory = categoryFromPick || editCategory || 'shared'
@@ -63,11 +64,12 @@ export function usePageForm({ mode, editSlug }) {
       setLoadingPage(true)
       setLoadError('')
       try {
-        const pageRes = await fetch(`${API_BASE}/api/dashboard/pages/by-slug/${encodeURIComponent(editSlug)}`)
+        const pageRes = await apiFetch(`/api/me/pages/by-slug/${encodeURIComponent(editSlug)}`)
+        if (pageRes.status === 403) throw new Error('forbidden')
         if (!pageRes.ok) throw new Error('page')
         const page = await pageRes.json()
         const [contentRes, tplRes] = await Promise.all([
-          fetch(`${API_BASE}/api/dashboard/pages/${page.id}/content`),
+          apiFetch(`/api/me/pages/${page.id}/content`),
           fetch(`${API_BASE}/api/templates/${page.templateId}`),
         ])
         if (!contentRes.ok || !tplRes.ok) throw new Error('related')
@@ -76,7 +78,8 @@ export function usePageForm({ mode, editSlug }) {
         if (cancelled) return
 
         setPageId(page.id)
-        setOwnerUserId(page.ownerUserId || DEFAULT_OWNER_USER_ID)
+        setPageStatus(page.status || 'draft')
+        setPreviewToken(page.previewToken || '')
         setSlug(page.slug || '')
         setTitle(page.title || '')
         setEventDate(toDatetimeLocalValue(page.eventDate))
@@ -100,9 +103,9 @@ export function usePageForm({ mode, editSlug }) {
         }
         setTextByKey(nextText)
         setTemplate(tpl)
-      } catch {
+      } catch (err) {
         if (!cancelled) {
-          setLoadError('Sayfa yüklenemedi.')
+          setLoadError(err?.message === 'forbidden' ? 'Bu sayfayı düzenleme yetkiniz yok.' : 'Sayfa yüklenemedi.')
           setTemplate(null)
         }
       } finally {
@@ -277,8 +280,7 @@ export function usePageForm({ mode, editSlug }) {
     }
   }
 
-  const onSubmit = async (e) => {
-    e.preventDefault()
+  const savePage = async (publish) => {
     setFormError('')
     setFormInfo('')
     if (!template) {
@@ -299,7 +301,7 @@ export function usePageForm({ mode, editSlug }) {
 
     if (totalPhotoCount === 0) {
       setFormError(
-        'Sayfanızı yayınlamak için en az bir fotoğraf seçmelisiniz. Kendi fotoğrafınızı yükleyebilir veya hazır görsellerden seçebilirsiniz.'
+        'En az bir fotoğraf seçmelisiniz. Kendi fotoğrafınızı yükleyebilir veya hazır görsellerden seçebilirsiniz.'
       )
       return
     }
@@ -328,21 +330,24 @@ export function usePageForm({ mode, editSlug }) {
       if (!Number.isNaN(d.getTime())) eventIso = d.toISOString()
     }
 
+    const nextStatus = publish ? 'published' : 'draft'
+    const nextIsPublic = publish
+
     setSubmitting(true)
     try {
       let targetPageId = pageId
+      let nextPreviewToken = previewToken
 
       if (isEdit) {
-        const patchRes = await fetch(`${API_BASE}/api/dashboard/pages/${pageId}`, {
+        const patchRes = await apiFetch(`/api/me/pages/${pageId}`, {
           method: 'PATCH',
-          headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             slug: s,
             title: t,
             eventDate: eventIso,
             mainText: mainText.trim() || null,
-            status: 'published',
-            isPublic: true,
+            status: nextStatus,
+            isPublic: nextIsPublic,
           }),
         })
         const patchBody = await patchRes.json().catch(() => ({}))
@@ -354,9 +359,10 @@ export function usePageForm({ mode, editSlug }) {
           )
           return
         }
+        if (patchBody.previewToken) nextPreviewToken = patchBody.previewToken
 
         for (const photoId of photosToDelete) {
-          const del = await fetch(`${API_BASE}/api/dashboard/pages/${pageId}/photos/${photoId}`, {
+          const del = await apiFetch(`/api/me/pages/${pageId}/photos/${photoId}`, {
             method: 'DELETE',
           })
           if (!del.ok) {
@@ -365,18 +371,16 @@ export function usePageForm({ mode, editSlug }) {
           }
         }
       } else {
-        const createRes = await fetch(`${API_BASE}/api/dashboard/pages`, {
+        const createRes = await apiFetch('/api/me/pages', {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            ownerUserId: ownerUserId.trim(),
             slug: s,
             templateId: template.id,
             title: t,
             eventDate: eventIso,
             mainText: mainText.trim() || null,
-            status: 'published',
-            isPublic: true,
+            status: nextStatus,
+            isPublic: nextIsPublic,
             settings: {},
           }),
         })
@@ -396,11 +400,13 @@ export function usePageForm({ mode, editSlug }) {
           return
         }
         targetPageId = createdBody.id
+        nextPreviewToken = createdBody.previewToken || ''
+        setPageId(createdBody.id)
       }
 
       for (const file of photoFiles) {
         if (typeof maxPhotos === 'number') {
-          const countRes = await fetch(`${API_BASE}/api/dashboard/pages/${targetPageId}/content`)
+          const countRes = await apiFetch(`/api/me/pages/${targetPageId}/content`)
           if (countRes.ok) {
             const content = await countRes.json()
             const onServer = (content.photos || []).length
@@ -413,7 +419,7 @@ export function usePageForm({ mode, editSlug }) {
 
         const fd = new FormData()
         fd.append('file', file)
-        const up = await fetch(`${API_BASE}/api/dashboard/pages/${targetPageId}/photos`, {
+        const up = await apiFetch(`/api/me/pages/${targetPageId}/photos`, {
           method: 'POST',
           body: fd,
         })
@@ -429,9 +435,8 @@ export function usePageForm({ mode, editSlug }) {
         }
       }
 
-      const contentRes = await fetch(`${API_BASE}/api/dashboard/pages/${targetPageId}/content`, {
+      const contentRes = await apiFetch(`/api/me/pages/${targetPageId}/content`, {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           texts,
           themeColor: themeColor.trim() || null,
@@ -444,9 +449,17 @@ export function usePageForm({ mode, editSlug }) {
         return
       }
 
+      setPageStatus(nextStatus)
+      setPreviewToken(nextPreviewToken)
+
       navigate(`/published/${s}`, {
         replace: true,
-        state: { title: t, wasEdit: isEdit },
+        state: {
+          title: t,
+          wasEdit: isEdit,
+          outcome: publish ? 'published' : 'draft',
+          previewToken: nextPreviewToken,
+        },
       })
     } catch (err) {
       console.error('Sayfa kaydetme hatası:', err)
@@ -454,6 +467,16 @@ export function usePageForm({ mode, editSlug }) {
     } finally {
       setSubmitting(false)
     }
+  }
+
+  const onSaveDraft = (e) => {
+    e.preventDefault()
+    savePage(false)
+  }
+
+  const onPublish = (e) => {
+    e.preventDefault()
+    savePage(true)
   }
 
   const dismissError = () => setFormError('')
@@ -478,8 +501,6 @@ export function usePageForm({ mode, editSlug }) {
     setThemeColor,
     musicUrl,
     setMusicUrl,
-    ownerUserId,
-    setOwnerUserId,
     keys,
     textByKey,
     setTextByKey,
@@ -504,6 +525,9 @@ export function usePageForm({ mode, editSlug }) {
     removePhotoAt,
     addPhotoFiles,
     toggleStockPhoto,
-    onSubmit,
+    pageStatus,
+    previewToken,
+    onSaveDraft,
+    onPublish,
   }
 }

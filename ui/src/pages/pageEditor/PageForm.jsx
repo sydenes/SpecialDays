@@ -24,7 +24,7 @@ export function PageForm({ mode, editSlug }) {
         <p className="error-banner">{form.loadError}</p>
         <p>
           {isEdit ? (
-            <Link to="/dashboard">Panele dön</Link>
+            <Link to="/panom">Panoma dön</Link>
           ) : (
             <Link to="/templates">Şablon seç</Link>
           )}
@@ -39,8 +39,8 @@ export function PageForm({ mode, editSlug }) {
         <h1>{isEdit ? 'Sayfa düzenle' : 'Sayfa oluştur'}</h1>
         <p className="flow-lead">{isEdit ? 'Sayfa bulunamadı.' : 'Önce bir şablon seçmelisiniz.'}</p>
         {isEdit ? (
-          <Link to="/dashboard" className="btn btn-primary">
-            Panele dön
+          <Link to="/panom" className="btn btn-primary">
+            Panoma dön
           </Link>
         ) : (
           <Link to="/templates" className="btn btn-primary">

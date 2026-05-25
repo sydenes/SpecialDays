@@ -3,6 +3,9 @@ import { Pool } from "pg";
 import { fileURLToPath } from "url";
 import { migrateCategoriesAndAssignments } from "./src/db/migrations/categoriesAndAssignments.js";
 import { migratePagePhotosInline } from "./src/db/migrations/pagePhotosInline.js";
+import { migratePageDraftPreview } from "./src/db/migrations/pageDraftPreview.js";
+import { migrateUserRoles } from "./src/db/migrations/userRoles.js";
+import { migratePageSoftDelete } from "./src/db/migrations/pageSoftDelete.js";
 import { migrateTemplateVariants } from "./src/db/migrations/templateVariants.js";
 
 dotenv.config({ path: fileURLToPath(new URL("../.env", import.meta.url)) });
@@ -19,6 +22,9 @@ async function main() {
     await migratePagePhotosInline(pool);
     await migrateCategoriesAndAssignments(pool);
     await migrateTemplateVariants(pool);
+    await migratePageDraftPreview(pool);
+    await migrateUserRoles(pool);
+    await migratePageSoftDelete(pool);
     console.log("Migrasyonlar bitti.");
   } catch (err) {
     console.error("Migrasyon hatasi:", err);

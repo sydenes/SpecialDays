@@ -12,8 +12,12 @@ import {
   uploadDashboardPagePhoto,
   deleteDashboardPagePhoto,
 } from "../controllers/dashboardPages.controller.js";
+import { requireAuth } from "../middleware/requireAuth.js";
+import { requireAdmin } from "../middleware/requireAdmin.js";
 
 const router = express.Router();
+
+router.use("/api/dashboard/pages", requireAuth, requireAdmin);
 
 const uploadPhoto = multer({
   storage: multer.memoryStorage(),

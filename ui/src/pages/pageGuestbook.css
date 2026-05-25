@@ -1,0 +1,107 @@
+.guestbook-admin {
+  max-width: 720px;
+  margin: 0 auto;
+  padding: 1.5rem clamp(1rem, 4vw, 2rem) 3rem;
+}
+
+.guestbook-admin-head {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+}
+
+.guestbook-admin-back {
+  display: inline-block;
+  margin-bottom: 0.5rem;
+  font-size: 0.9rem;
+  color: #2563eb;
+  text-decoration: none;
+}
+
+.guestbook-admin-head h1 {
+  margin: 0;
+  font-family: Georgia, 'Times New Roman', serif;
+  font-size: 1.75rem;
+  color: #2a2438;
+}
+
+.guestbook-admin-sub {
+  margin: 0.35rem 0 0;
+  color: #6b6575;
+}
+
+.guestbook-admin-slug {
+  font-family: ui-monospace, monospace;
+  font-size: 0.9em;
+}
+
+.guestbook-admin-section {
+  margin-bottom: 2rem;
+}
+
+.guestbook-admin-section h2 {
+  margin: 0 0 0.85rem;
+  font-size: 1.05rem;
+  color: #3d3847;
+}
+
+.guestbook-count {
+  font-weight: 600;
+  color: #8a8494;
+}
+
+.guestbook-admin-empty {
+  margin: 0;
+  color: #9a94a8;
+  font-size: 0.95rem;
+}
+
+.guestbook-admin-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.guestbook-admin-card {
+  padding: 1rem 1.1rem;
+  background: #fff;
+  border: 1px solid #ece8f0;
+  border-radius: 12px;
+}
+
+.guestbook-admin-card--pending {
+  border-color: #f5d9a8;
+  background: #fffbf5;
+}
+
+.guestbook-admin-text {
+  margin: 0 0 0.6rem;
+  line-height: 1.55;
+  color: #2a2438;
+}
+
+.guestbook-admin-meta {
+  margin: 0 0 0.75rem;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem 1rem;
+  font-size: 0.85rem;
+  color: #6b6575;
+}
+
+.guestbook-admin-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.guestbook-admin-hint {
+  margin: 0;
+  font-size: 0.85rem;
+  color: #9a94a8;
+}

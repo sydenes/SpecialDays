@@ -24,6 +24,25 @@
   border-radius: 999px;
 }
 
+.publish-success-badge--draft {
+  color: #6b5a2e;
+  background: #f5edd8;
+}
+
+.publish-success-note {
+  margin: 0 0 1.25rem;
+  padding: 0.65rem 0.85rem;
+  font-size: 0.88rem;
+  color: #5c5348;
+  background: #faf6ef;
+  border-radius: 10px;
+  border: 1px solid #e8dcc8;
+}
+
+.publish-success-note code {
+  font-size: 0.86em;
+}
+
 .publish-success h1 {
   margin: 0 0 0.5rem;
 }

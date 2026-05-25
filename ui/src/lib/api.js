@@ -1,4 +1,21 @@
+import { clearStoredToken, getStoredToken, setStoredToken } from './authStorage.js'
+
 export const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:4000'
 
-export const DEFAULT_OWNER_USER_ID =
-  import.meta.env.VITE_DEFAULT_OWNER_USER_ID || 'dbe9a6fa-1d4f-4c95-a094-b479c3027f83'
+export function authHeaders(extra = {}) {
+  const token = getStoredToken()
+  const headers = { ...extra }
+  if (token) headers.Authorization = `Bearer ${token}`
+  return headers
+}
+
+/** JSON istekleri — oturum token'ı otomatik eklenir */
+export async function apiFetch(path, options = {}) {
+  const headers = authHeaders(options.headers || {})
+  if (options.body && !(options.body instanceof FormData) && !headers['Content-Type']) {
+    headers['Content-Type'] = 'application/json'
+  }
+  return fetch(`${API_BASE}${path}`, { ...options, headers })
+}
+
+export { setStoredToken, clearStoredToken, getStoredToken }

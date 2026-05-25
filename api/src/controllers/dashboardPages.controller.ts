@@ -1,15 +1,18 @@
 import type { NextFunction, Request, Response } from "express";
-import { getPgUniqueConstraint } from "../utils/pgErrors.js";
 import {
   createPage,
-  deletePage,
+  softDeletePage,
   getPageByIdAdmin,
   getPageBySlugAdmin,
+  listAllPagesAdmin,
   listPagesByOwner,
   updatePage,
   type CreatePageInput,
   type UpdatePageInput,
 } from "../db/queries/dashboardPages.queries.js";
+import type { AuthedRequest } from "../middleware/requireAuth.js";
+import { getPgUniqueConstraint } from "../utils/pgErrors.js";
+import { toPageApiResponse } from "../utils/pageResponse.js";
 import { getPageContentByPageId, upsertPageContentByPageId } from "../db/queries/pageContent.queries.js";
 import {
   countPhotosForPage,
@@ -31,37 +34,36 @@ function normalizeParamToString(value: string | string[] | undefined): string | 
   return null;
 }
 
-export async function listPages(req: Request, res: Response, next: NextFunction) {
+export async function listPages(req: AuthedRequest, res: Response, next: NextFunction) {
   try {
+    const user = req.authUser!;
     const ownerUserId = getQueryParamString(req, "ownerUserId");
-    if (!ownerUserId) return res.status(400).json({ error: "ownerUserId query param required" });
-
-    const items = await listPagesByOwner(ownerUserId);
-    return res.json({ items });
+    const items = ownerUserId ? await listPagesByOwner(ownerUserId) : await listAllPagesAdmin();
+    return res.json({ items: items.map((p) => toPageApiResponse(p, user)) });
   } catch (err) {
     return next(err);
   }
 }
 
-export async function getPage(req: Request, res: Response, next: NextFunction) {
+export async function getPage(req: AuthedRequest, res: Response, next: NextFunction) {
   try {
     const id = normalizeParamToString(req.params.id);
     if (!id) return res.status(400).json({ error: "id is required" });
     const page = await getPageByIdAdmin(id);
     if (!page) return res.status(404).json({ error: "Page not found" });
-    return res.json(page);
+    return res.json(toPageApiResponse(page, req.authUser!));
   } catch (err) {
     return next(err);
   }
 }
 
-export async function getPageBySlug(req: Request, res: Response, next: NextFunction) {
+export async function getPageBySlug(req: AuthedRequest, res: Response, next: NextFunction) {
   try {
     const slug = normalizeParamToString(req.params.slug);
     if (!slug) return res.status(400).json({ error: "slug is required" });
     const page = await getPageBySlugAdmin(slug);
     if (!page) return res.status(404).json({ error: "Page not found" });
-    return res.json(page);
+    return res.json(toPageApiResponse(page, req.authUser!));
   } catch (err) {
     return next(err);
   }
@@ -79,10 +81,12 @@ export async function postPage(req: Request, res: Response, next: NextFunction) 
     const eventDate = body.eventDate === undefined ? null : (body.eventDate as any);
     const mainText = body.mainText === undefined ? null : (body.mainText as any);
     const heroImageUrl = body.heroImageUrl === undefined ? null : (body.heroImageUrl as any);
-    const isPublic = typeof body.isPublic === "boolean" ? body.isPublic : true;
+    const statusRaw = (body.status as any) || "draft";
+    const isPublic =
+      typeof body.isPublic === "boolean" ? body.isPublic : statusRaw === "published";
     const accessPassword = body.accessPassword === undefined ? null : (body.accessPassword as any);
     const customDomain = body.customDomain === undefined ? null : (body.customDomain as any);
-    const status = (body.status as any) || "draft";
+    const status = statusRaw;
     const settings = body.settings && typeof body.settings === "object" ? (body.settings as any) : {};
 
     if (!ownerUserId || !slug || !templateId || !title) return res.status(400).json({ error: "ownerUserId, slug, templateId, title required" });
@@ -104,7 +108,7 @@ export async function postPage(req: Request, res: Response, next: NextFunction) 
       settings,
     });
 
-    return res.status(201).json(created);
+    return res.status(201).json(toPageApiResponse(created, (req as AuthedRequest).authUser!));
   } catch (err) {
     const c = getPgUniqueConstraint(err);
     if (c === "special_pages_slug_key") {
@@ -116,7 +120,7 @@ export async function postPage(req: Request, res: Response, next: NextFunction) 
   }
 }
 
-export async function patchPage(req: Request, res: Response, next: NextFunction) {
+export async function patchPage(req: AuthedRequest, res: Response, next: NextFunction) {
   try {
     const id = normalizeParamToString(req.params.id);
     if (!id) return res.status(400).json({ error: "id is required" });
@@ -128,7 +132,7 @@ export async function patchPage(req: Request, res: Response, next: NextFunction)
 
     const updated = await updatePage(id, body);
     if (!updated) return res.status(404).json({ error: "Page not found" });
-    return res.json(updated);
+    return res.json(toPageApiResponse(updated, req.authUser!));
   } catch (err) {
     const c = getPgUniqueConstraint(err);
     if (c === "special_pages_slug_key") {
@@ -144,9 +148,9 @@ export async function removePage(req: Request, res: Response, next: NextFunction
   try {
     const id = normalizeParamToString(req.params.id);
     if (!id) return res.status(400).json({ error: "id is required" });
-    const ok = await deletePage(id);
-    if (!ok) return res.status(404).json({ error: "Page not found" });
-    return res.status(204).send();
+    const updated = await softDeletePage(id);
+    if (!updated) return res.status(404).json({ error: "Page not found" });
+    return res.json(toPageApiResponse(updated, req.authUser!));
   } catch (err) {
     return next(err);
   }

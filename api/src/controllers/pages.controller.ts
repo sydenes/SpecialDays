@@ -1,7 +1,7 @@
 import type { NextFunction, Request, Response } from "express";
 import { getSpecialPageBySlug } from "../db/queries/specialPages.queries.js";
 import { getPagePhotoBlobBySlug, getPagePhotosBySlug } from "../db/queries/pagePhotos.queries.js";
-import { createApprovedMessageBySlug, getApprovedMessagesBySlug } from "../db/queries/pageMessages.queries.js";
+import { createPendingMessageBySlug, getApprovedMessagesBySlug } from "../db/queries/pageMessages.queries.js";
 import { getTextBlocksBySlug } from "../db/queries/pageTextBlocks.queries.js";
 
 // GET /api/pages/:slug
@@ -99,13 +99,17 @@ export async function postMessageByPageSlug(req: Request, res: Response, next: N
     if (!authorName) return res.status(400).json({ error: "authorName is required" });
     if (!messageText) return res.status(400).json({ error: "messageText is required" });
 
-    const message = await createApprovedMessageBySlug(slug, {
+    const message = await createPendingMessageBySlug(slug, {
       authorName,
       authorEmail,
       messageText,
     });
 
-    return res.status(201).json(message);
+    return res.status(201).json({
+      item: message,
+      pending: true,
+      notice: "Mesajınız alındı. Sayfa sahibi onayladıktan sonra görünecek.",
+    });
   } catch (err) {
     return next(err);
   }

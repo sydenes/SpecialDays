@@ -323,6 +323,120 @@
   padding: clamp(1.1rem, 2.8vw, 2rem);
 }
 
+.published-message-shell--split {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: clamp(1.25rem, 3vw, 2.5rem);
+  align-items: start;
+}
+
+.published-guestbook-left {
+  display: flex;
+  flex-direction: column;
+  gap: 1.15rem;
+  min-width: 0;
+}
+
+.published-guestbook-left .published-message-note h3 {
+  margin: 0 0 0.65rem;
+}
+
+.published-message-shell--split .guest-section {
+  margin: 0;
+}
+
+.guest-messages-scroll {
+  margin: 0;
+  max-height: min(15.5rem, 42vh);
+  overflow-y: auto;
+  padding-right: 0.25rem;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(201, 164, 106, 0.55) transparent;
+}
+
+.guest-messages-scroll::-webkit-scrollbar {
+  width: 6px;
+}
+
+.guest-messages-scroll::-webkit-scrollbar-thumb {
+  background: rgba(201, 164, 106, 0.45);
+  border-radius: 999px;
+}
+
+.guest-messages-scroll-label {
+  margin: 0 0 0.65rem;
+  font-size: 0.88rem;
+  font-weight: 600;
+  color: #6b5f52;
+  letter-spacing: 0.02em;
+}
+
+.guest-messages-scroll .guest-messages-list {
+  margin: 0;
+}
+
+.guest-messages-block {
+  margin-bottom: 1.25rem;
+}
+
+.guest-messages-heading {
+  margin: 0 0 0.75rem;
+  font-size: 1rem;
+  font-weight: 600;
+  color: #4a3f35;
+}
+
+.guest-messages-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.guest-message-card {
+  padding: 0.85rem 1rem;
+  background: rgba(255, 255, 255, 0.72);
+  border: 1px solid rgba(201, 164, 106, 0.22);
+  border-radius: 10px;
+}
+
+.guest-message-text {
+  margin: 0 0 0.45rem;
+  line-height: 1.55;
+  color: #3d352e;
+}
+
+.guest-message-meta {
+  margin: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem 0.85rem;
+  font-size: 0.82rem;
+  color: #7a7068;
+}
+
+.guest-message-meta strong {
+  color: #4a3f35;
+}
+
+.guest-messages-empty {
+  margin: 0 0 1rem;
+  font-size: 0.9rem;
+  color: #8a7f75;
+}
+
+.guest-success {
+  margin: 0 0 0.75rem;
+  padding: 0.65rem 0.85rem;
+  background: #ecfdf3;
+  border: 1px solid #bbf7d0;
+  border-radius: 8px;
+  color: #166534;
+  font-size: 0.9rem;
+}
+
 .published-message-note p {
   margin: 0;
   color: #594d40;

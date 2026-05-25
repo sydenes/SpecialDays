@@ -25,17 +25,65 @@ export async function getPagePhotosBySlug(slug: string): Promise<PagePhoto[]> {
       (p.image_data IS NOT NULL) AS "hasInline"
     FROM page_photos p
     JOIN special_pages sp ON sp.id = p.page_id
-    WHERE sp.slug = $1
+    WHERE sp.slug = $1 AND sp.status = 'published'
     ORDER BY p.sort_order ASC, p.created_at ASC
     `,
     [slug]
   );
 
-  return (rows as PagePhotoDbRow[]).map((r) => mapPagePhotoRowForSlug(slug, r));
+  return (rows as PagePhotoDbRow[]).map((r) => mapPagePhotoRowForSlug(slug, r, "public"));
 }
 
-export function mapPagePhotoRowForSlug(slug: string, row: PagePhotoDbRow): PagePhoto {
-  const inlinePath = `/api/pages/${slug}/photos/${row.id}/image`;
+type DraftPhotoAccess = { previewToken?: string; ownerUserId?: string };
+
+/** Taslak önizleme listesi (token veya sahip oturumu) */
+export async function getPagePhotosBySlugForDraft(
+  slug: string,
+  access: DraftPhotoAccess
+): Promise<PagePhoto[]> {
+  const token = access.previewToken?.trim() || "";
+  const ownerId = access.ownerUserId || null;
+
+  const { rows } = await pool.query(
+    `
+    SELECT
+      p.id,
+      p.file_url AS "fileUrl",
+      p.thumbnail_url AS "thumbnailUrl",
+      p.caption,
+      p.sort_order AS "sortOrder",
+      p.created_at AS "createdAt",
+      (p.image_data IS NOT NULL) AS "hasInline"
+    FROM page_photos p
+    JOIN special_pages sp ON sp.id = p.page_id
+    WHERE sp.slug = $1
+      AND sp.status = 'draft'
+      AND (
+        ($2 <> '' AND sp.preview_token = $2)
+        OR ($3::uuid IS NOT NULL AND sp.owner_user_id = $3)
+      )
+    ORDER BY p.sort_order ASC, p.created_at ASC
+    `,
+    [slug, token, ownerId]
+  );
+
+  return (rows as PagePhotoDbRow[]).map((r) =>
+    mapPagePhotoRowForSlug(slug, r, "preview", token || undefined)
+  );
+}
+
+export function mapPagePhotoRowForSlug(
+  slug: string,
+  row: PagePhotoDbRow,
+  mode: "public" | "preview" = "public",
+  previewToken?: string
+): PagePhoto {
+  const inlinePath =
+    mode === "preview"
+      ? previewToken
+        ? `/api/preview/${slug}/photos/${row.id}/image?token=${encodeURIComponent(previewToken)}`
+        : `/api/preview/${slug}/photos/${row.id}/image`
+      : `/api/pages/${slug}/photos/${row.id}/image`;
   return mapPagePhotoRow({
     id: row.id,
     fileUrl: row.hasInline ? inlinePath : row.fileUrl ?? "",
@@ -61,9 +109,39 @@ export async function getPagePhotoBlobBySlug(slug: string, photoId: string): Pro
       p.file_url AS "fileUrl"
     FROM page_photos p
     JOIN special_pages sp ON sp.id = p.page_id
-    WHERE sp.slug = $1 AND p.id = $2
+    WHERE sp.slug = $1 AND p.id = $2 AND sp.status = 'published'
     `,
     [slug, photoId]
+  );
+  if (rows.length === 0) return null;
+  return rows[0] as PagePhotoBlobRow;
+}
+
+export async function getPagePhotoBlobBySlugForDraft(
+  slug: string,
+  photoId: string,
+  access: DraftPhotoAccess
+): Promise<PagePhotoBlobRow | null> {
+  const token = access.previewToken?.trim() || "";
+  const ownerId = access.ownerUserId || null;
+
+  const { rows } = await pool.query(
+    `
+    SELECT
+      p.image_data AS "imageData",
+      p.mime_type AS "mimeType",
+      p.file_url AS "fileUrl"
+    FROM page_photos p
+    JOIN special_pages sp ON sp.id = p.page_id
+    WHERE sp.slug = $1
+      AND p.id = $2
+      AND sp.status = 'draft'
+      AND (
+        ($3 <> '' AND sp.preview_token = $3)
+        OR ($4::uuid IS NOT NULL AND sp.owner_user_id = $4)
+      )
+    `,
+    [slug, photoId, token, ownerId]
   );
   if (rows.length === 0) return null;
   return rows[0] as PagePhotoBlobRow;

@@ -9,6 +9,7 @@ export function PublicPage() {
   const [page, setPage] = useState(null)
   const [photos, setPhotos] = useState([])
   const [texts, setTexts] = useState([])
+  const [messages, setMessages] = useState([])
   const [loading, setLoading] = useState(true)
   const [loadError, setLoadError] = useState('')
 
@@ -35,21 +36,24 @@ export function PublicPage() {
           return
         }
 
-        const [pageData, photosRes, textsRes] = await Promise.all([
+        const [pageData, photosRes, textsRes, messagesRes] = await Promise.all([
           pageRes.json(),
           fetch(`${API_BASE}/api/pages/${slug}/photos`),
           fetch(`${API_BASE}/api/pages/${slug}/texts`),
+          fetch(`${API_BASE}/api/pages/${slug}/messages`),
         ])
 
         if (!photosRes.ok || !textsRes.ok) throw new Error('related')
 
         const photosData = await photosRes.json()
         const textsData = await textsRes.json()
+        const messagesData = messagesRes.ok ? await messagesRes.json() : { items: [] }
 
         if (!cancelled) {
           setPage(pageData)
           setPhotos(photosData.items || [])
           setTexts(textsData.items || [])
+          setMessages(messagesData.items || [])
         }
       } catch {
         if (!cancelled) {
@@ -93,6 +97,7 @@ export function PublicPage() {
       page={page}
       photos={photos}
       texts={textsSorted}
+      messages={messages}
       slug={slug}
       previewMode={false}
       embedded={false}

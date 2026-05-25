@@ -1,3 +1,4 @@
+import { randomBytes } from "node:crypto";
 import { pool } from "../pool.js";
 import {
   mapSpecialPageAdminRow,
@@ -29,10 +30,17 @@ export type UpdatePageInput = Partial<CreatePageInput> & {
 
 export async function listPagesByOwner(ownerUserId: string): Promise<SpecialPageAdmin[]> {
   const { rows } = await pool.query(
-    `${specialPagesEntityAdmin.selectById} WHERE sp.owner_user_id = $1 ORDER BY sp.created_at DESC`,
+    `${specialPagesEntityAdmin.selectById} WHERE sp.owner_user_id = $1 AND sp.deleted_at IS NULL ORDER BY sp.created_at DESC`,
     [ownerUserId]
   );
 
+  return (rows as any[]).map((r) => mapSpecialPageAdminRow(r));
+}
+
+export async function listAllPagesAdmin(): Promise<SpecialPageAdmin[]> {
+  const { rows } = await pool.query(
+    `${specialPagesEntityAdmin.selectById} ORDER BY sp.created_at DESC`
+  );
   return (rows as any[]).map((r) => mapSpecialPageAdminRow(r));
 }
 
@@ -65,9 +73,11 @@ export async function createPage(input: CreatePageInput): Promise<SpecialPageAdm
     settings = {},
   } = input;
 
-  const accessPasswordHash = accessPassword ? hashPassword(accessPassword) : null;
+  const accessPasswordHash = accessPassword ? await hashPassword(accessPassword) : null;
 
   const publishedAt = status === "published" ? new Date() : null;
+  const previewToken = randomBytes(24).toString("hex");
+  const isPublicEffective = status === "published" ? (isPublic ?? true) : false;
 
   await pool.query(
     `
@@ -84,11 +94,12 @@ export async function createPage(input: CreatePageInput): Promise<SpecialPageAdm
       access_password_hash,
       custom_domain,
       status,
+      preview_token,
       settings,
       published_at
     )
     VALUES (
-      $1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13::jsonb,$14
+      $1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14::jsonb,$15
     )
     `,
     [
@@ -100,10 +111,11 @@ export async function createPage(input: CreatePageInput): Promise<SpecialPageAdm
       eventDate ? new Date(eventDate as any) : null,
       mainText,
       heroImageUrl,
-      isPublic,
+      isPublicEffective,
       accessPasswordHash,
       customDomain,
       status,
+      previewToken,
       JSON.stringify(settings ?? {}),
       publishedAt,
     ]
@@ -139,7 +151,7 @@ export async function updatePage(id: string, input: UpdatePageInput): Promise<Sp
   }
 
   if ("accessPassword" in input) {
-    const accessPasswordHash = input.accessPassword ? hashPassword(input.accessPassword) : null;
+    const accessPasswordHash = input.accessPassword ? await hashPassword(input.accessPassword) : null;
     pushSet("access_password_hash", accessPasswordHash);
   }
 
@@ -165,8 +177,18 @@ export async function updatePage(id: string, input: UpdatePageInput): Promise<Sp
   return getPageByIdAdmin(rows[0].id);
 }
 
+export async function softDeletePage(id: string): Promise<SpecialPageAdmin | null> {
+  const { rows } = await pool.query(
+    `UPDATE special_pages SET deleted_at = NOW() WHERE id = $1 AND deleted_at IS NULL RETURNING id`,
+    [id]
+  );
+  if (rows.length === 0) return null;
+  return getPageByIdAdmin(id);
+}
+
+/** @deprecated use softDeletePage */
 export async function deletePage(id: string): Promise<boolean> {
-  const { rowCount } = await pool.query(`DELETE FROM special_pages WHERE id = $1`, [id]);
-  return (rowCount ?? 0) > 0;
+  const page = await softDeletePage(id);
+  return Boolean(page);
 }
 

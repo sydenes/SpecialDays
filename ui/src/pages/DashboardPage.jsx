@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { API_BASE } from '../lib/api.js'
+import { apiFetch } from '../lib/api.js'
 import { photoSrc } from '../lib/photoUrl.js'
 import './flowPages.css'
 
@@ -26,7 +26,7 @@ function mergeDashPhotoQueue(prev, incoming, maxPhotos, existingOnServer) {
 }
 
 export function DashboardPage() {
-  const [ownerUserId, setOwnerUserId] = useState('dbe9a6fa-1d4f-4c95-a094-b479c3027f83')
+  const [adminOwnerUserId, setAdminOwnerUserId] = useState('')
   const [templates, setTemplates] = useState([])
   const [pages, setPages] = useState([])
   const [selectedPageId, setSelectedPageId] = useState('')
@@ -53,27 +53,27 @@ export function DashboardPage() {
   const selectedPage = useMemo(() => pages.find((p) => p.id === selectedPageId) || null, [pages, selectedPageId])
 
   const loadTemplates = async () => {
-    const res = await fetch(`${API_BASE}/api/dashboard/templates`)
+    const res = await apiFetch('/api/dashboard/templates')
     const data = await res.json()
     setTemplates(data.items || [])
   }
 
   const loadPages = async () => {
-    if (!ownerUserId) return
-    const res = await fetch(`${API_BASE}/api/dashboard/pages?ownerUserId=${encodeURIComponent(ownerUserId)}`)
+    const q = adminOwnerUserId.trim() ? `?ownerUserId=${encodeURIComponent(adminOwnerUserId.trim())}` : ''
+    const res = await apiFetch(`/api/dashboard/pages${q}`)
     const data = await res.json()
     setPages(data.items || [])
   }
 
   const loadTemplateDetail = async (templateId) => {
-    const res = await fetch(`${API_BASE}/api/dashboard/templates/${templateId}`)
+    const res = await apiFetch(`/api/dashboard/templates/${templateId}`)
     if (!res.ok) return setSelectedTemplate(null)
     const data = await res.json()
     setSelectedTemplate(data)
   }
 
   const loadPageContent = async (pageId) => {
-    const res = await fetch(`${API_BASE}/api/dashboard/pages/${pageId}/content`)
+    const res = await apiFetch(`/api/dashboard/pages/${pageId}/content`)
     if (!res.ok) {
       setContentPhotos([])
       setTextLines('')
@@ -106,7 +106,7 @@ export function DashboardPage() {
     setDashError('')
     setDashInfo('')
     try {
-      const res = await fetch(`${API_BASE}/api/dashboard/templates`, {
+      const res = await apiFetch('/api/dashboard/templates', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -135,11 +135,11 @@ export function DashboardPage() {
     setDashError('')
     setDashInfo('')
     try {
-      const res = await fetch(`${API_BASE}/api/dashboard/pages`, {
+      const res = await apiFetch('/api/dashboard/pages', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          ownerUserId: ownerUserId.trim(),
+          ownerUserId: adminOwnerUserId.trim(),
           slug: newPageSlug.trim(),
           templateId: newPageTemplateId,
           title: newPageTitle.trim(),
@@ -170,7 +170,7 @@ export function DashboardPage() {
       .map((content, i) => ({ blockKey: `text-${i + 1}`, content, sortOrder: i + 1 }))
 
     try {
-      const res = await fetch(`${API_BASE}/api/dashboard/pages/${selectedPageId}/content`, {
+      const res = await apiFetch(`/api/dashboard/pages/${selectedPageId}/content`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -207,7 +207,7 @@ export function DashboardPage() {
         const file = photoPending[i]
         const fd = new FormData()
         fd.append('file', file)
-        const res = await fetch(`${API_BASE}/api/dashboard/pages/${selectedPageId}/photos`, {
+        const res = await apiFetch(`/api/dashboard/pages/${selectedPageId}/photos`, {
           method: 'POST',
           body: fd,
         })
@@ -232,7 +232,7 @@ export function DashboardPage() {
     setDashError('')
     setDashInfo('')
     try {
-      const res = await fetch(`${API_BASE}/api/dashboard/pages/${selectedPageId}/photos/${photoId}`, {
+      const res = await apiFetch(`/api/dashboard/pages/${selectedPageId}/photos/${photoId}`, {
         method: 'DELETE',
       })
       if (!res.ok) {
@@ -251,10 +251,10 @@ export function DashboardPage() {
 
   return (
     <section className="flow-section" style={{ textAlign: 'left', maxWidth: 720 }}>
-      <h1 style={{ textAlign: 'center' }}>Pano</h1>
+      <h1 style={{ textAlign: 'center' }}>Yönetim paneli</h1>
       <p className="flow-lead" style={{ textAlign: 'center' }}>
-        Geliştirici araçları. Yayınlanan sayfa: <Link to="/john-and-martha">/john-and-martha</Link> veya{' '}
-        <Link to="/templates">yeni akış</Link>.
+        Yalnızca <strong>admin</strong> kullanıcılar için — şablon CRUD ve tüm sayfalar. Son kullanıcılar{' '}
+        <Link to="/panom">Panom</Link> sayfasını kullanır.
       </p>
       {dashError && <p className="error-banner">{dashError}</p>}
       {dashInfo && <p className="info-banner">{dashInfo}</p>}
@@ -275,9 +275,13 @@ export function DashboardPage() {
       <hr style={{ margin: '1.5rem 0', border: 'none', borderTop: '1px solid #ece8f0' }} />
       <h2>Page Create</h2>
       <form onSubmit={createPage} className="create-form" style={{ maxWidth: 'none', marginBottom: '1.5rem' }}>
-        <input placeholder="ownerUserId" value={ownerUserId} onChange={(e) => setOwnerUserId(e.target.value)} />
+        <input
+          placeholder="ownerUserId (boş = tüm sayfalar)"
+          value={adminOwnerUserId}
+          onChange={(e) => setAdminOwnerUserId(e.target.value)}
+        />
         <button type="button" className="btn btn-primary" onClick={() => loadPages().catch(() => setDashError('Page listesi yenilenemedi'))}>
-          Load Owner Pages
+          Sayfaları yükle
         </button>
         <input placeholder="slug (ayse-anniversary-2026)" value={newPageSlug} onChange={(e) => setNewPageSlug(e.target.value)} />
         <input placeholder="title" value={newPageTitle} onChange={(e) => setNewPageTitle(e.target.value)} />

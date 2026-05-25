@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom'
 import { photoSrc } from '../../lib/photoUrl.js'
 import { stockPhotoSrc } from '../../lib/defaultPhotos.js'
 import { fileDedupeKey, labelForKey } from './pageFormUtils.js'
+import { getPreviewPageUrl, getPublicPageUrl } from '../../lib/pageUrl.js'
 import { PageLivePreview } from './PageLivePreview.jsx'
 import { usePreviewPhotoList } from './usePreviewPhotoList.js'
 import '../flowPages.css'
@@ -25,8 +26,6 @@ export function PageFormView({
   setThemeColor,
   musicUrl,
   setMusicUrl,
-  ownerUserId,
-  setOwnerUserId,
   keys,
   textByKey,
   setTextByKey,
@@ -50,8 +49,12 @@ export function PageFormView({
   removePhotoAt,
   addPhotoFiles,
   toggleStockPhoto,
-  onSubmit,
+  pageStatus,
+  previewToken,
+  onSaveDraft,
+  onPublish,
 }) {
+  const isPublished = pageStatus === 'published'
   const photoItems = usePreviewPhotoList(existingPhotos, photosToDelete, photoFiles)
 
   const toastLayer =
@@ -87,14 +90,28 @@ export function PageFormView({
         {isEdit ? (
           <>
             {' '}
-            — <Link to={`/${editSlug}`}>Canlı sayfayı görüntüle</Link>
+            —{' '}
+            {isPublished ? (
+              <Link to={`/${editSlug}`}>Canlı sayfayı görüntüle</Link>
+            ) : previewToken ? (
+              <a href={getPreviewPageUrl(editSlug, previewToken)} target="_blank" rel="noopener noreferrer">
+                Taslak önizleme
+              </a>
+            ) : null}
+            {pageStatus === 'draft' ? (
+              <span className="form-hint page-status-hint"> · Durum: taslak (henüz herkese açık değil)</span>
+            ) : (
+              <span className="form-hint page-status-hint"> · Durum: yayında</span>
+            )}
           </>
-        ) : null}
+        ) : (
+          <span className="form-hint page-status-hint">Kayıttan sonra taslak olarak saklanır; yayın ayrı adımdır.</span>
+        )}
       </p>
 
       <div className="page-editor-layout">
         <div className="page-editor-form-col">
-      <form className="create-form" onSubmit={onSubmit} noValidate autoComplete="off">
+      <form className="create-form" onSubmit={(e) => e.preventDefault()} noValidate autoComplete="off">
         <label>
           Sayfa adresi (slug)
           <input value={slug} onChange={(e) => setSlug(e.target.value)} placeholder="john-ve-martha" />
@@ -221,23 +238,26 @@ export function PageFormView({
           <input value={musicUrl} onChange={(e) => setMusicUrl(e.target.value)} placeholder="https://..." />
         </label>
 
-        <label>
-          Sahip kullanıcı ID (geçici)
-          <input value={ownerUserId} onChange={(e) => setOwnerUserId(e.target.value)} />
-          <span className="form-hint">
-            Giriş olmadan deneme için .env içinde VITE_DEFAULT_OWNER_USER_ID kullanın.
-          </span>
-        </label>
-
-        <button type="submit" className="btn btn-publish btn-block" disabled={submitting}>
-          {submitting
-            ? isEdit
-              ? 'Kaydediliyor...'
-              : 'Yayınlanıyor...'
-            : isEdit
-              ? 'Değişiklikleri kaydet'
-              : 'Sayfayı yayınla'}
-        </button>
+        <div className="form-actions-stack">
+          {!isPublished ? (
+            <button type="button" className="btn btn-draft btn-block" disabled={submitting} onClick={onSaveDraft}>
+              {submitting ? 'Kaydediliyor…' : 'Taslak kaydet'}
+            </button>
+          ) : null}
+          <button type="button" className="btn btn-publish btn-block" disabled={submitting} onClick={onPublish}>
+            {submitting
+              ? 'Kaydediliyor…'
+              : isPublished
+                ? 'Değişiklikleri kaydet'
+                : 'Yayınla'}
+          </button>
+          {!isPublished ? (
+            <p className="form-hint form-actions-hint">
+              Taslak yalnızca size özel önizleme linkiyle görünür. Yayınladıktan sonra davetlilerinizle paylaşın.
+              Ödeme entegrasyonu eklendiğinde yayın, ödeme sonrası açılacak.
+            </p>
+          ) : null}
+        </div>
       </form>
 
       <p style={{ marginTop: '1.5rem' }}>

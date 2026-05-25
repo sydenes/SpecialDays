@@ -4,6 +4,8 @@ import { fileURLToPath } from "url";
 import { migrateCategoriesAndAssignments } from "./src/db/migrations/categoriesAndAssignments.js";
 import { migratePagePhotosInline } from "./src/db/migrations/pagePhotosInline.js";
 import { migrateTemplateVariants } from "./src/db/migrations/templateVariants.js";
+import { migrateUserRoles } from "./src/db/migrations/userRoles.js";
+import { migratePageSoftDelete } from "./src/db/migrations/pageSoftDelete.js";
 
 dotenv.config({ path: fileURLToPath(new URL("../.env", import.meta.url)) });
 
@@ -72,6 +74,7 @@ CREATE TABLE IF NOT EXISTS special_pages (
   access_password_hash TEXT,
   custom_domain TEXT UNIQUE,
   status TEXT NOT NULL DEFAULT 'draft' CHECK (status IN ('draft','published','archived')),
+  preview_token TEXT UNIQUE,
   view_count BIGINT NOT NULL DEFAULT 0,
   settings JSONB NOT NULL DEFAULT '{}'::jsonb,
   published_at TIMESTAMPTZ,
@@ -254,6 +257,8 @@ async function main() {
     await migrateCategoriesAndAssignments(pool);
     await migrateTemplateVariants(pool);
     await pool.query(SQL_SEED);
+    await migrateUserRoles(pool);
+    await migratePageSoftDelete(pool);
     console.log("DB init tamamlandi.");
     await pool.end();
   } catch (err) {

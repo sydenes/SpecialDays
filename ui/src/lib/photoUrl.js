@@ -6,6 +6,9 @@ export function photoSrc(fileUrl) {
   if (fileUrl.startsWith('blob:')) return fileUrl
   if (fileUrl.startsWith('http://') || fileUrl.startsWith('https://')) return fileUrl
   if (fileUrl.startsWith('/images/')) return fileUrl
+  if (fileUrl.startsWith('/api/')) {
+    return `${API_BASE.replace(/\/$/, '')}${fileUrl}`
+  }
   const path = fileUrl.startsWith('/') ? fileUrl : `/${fileUrl}`
   return `${API_BASE.replace(/\/$/, '')}${path}`
 }

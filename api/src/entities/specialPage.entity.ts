@@ -14,6 +14,8 @@ export type SpecialPage = {
 export type SpecialPageAdmin = {
   id: string;
   ownerUserId: string;
+  ownerFullName?: string | null;
+  ownerEmail?: string | null;
   slug: string;
   templateId: string;
   templateCode: string;
@@ -28,9 +30,12 @@ export type SpecialPageAdmin = {
   accessPasswordHash: string | null;
   customDomain: string | null;
   status: "draft" | "published" | "archived";
+  previewToken: string | null;
   viewCount: number;
   settings: Record<string, unknown>;
   publishedAt: Date | null;
+  deletedAt: Date | null;
+  pendingMessageCount?: number;
   createdAt: Date;
   updatedAt: Date;
 };
@@ -93,6 +98,8 @@ export const specialPagesEntityAdmin = {
     SELECT
       sp.id,
       sp.owner_user_id AS "ownerUserId",
+      u.full_name AS "ownerFullName",
+      u.email AS "ownerEmail",
       sp.slug,
       sp.template_id AS "templateId",
       t.code AS "templateCode",
@@ -107,18 +114,24 @@ export const specialPagesEntityAdmin = {
       sp.access_password_hash AS "accessPasswordHash",
       sp.custom_domain AS "customDomain",
       sp.status,
+      sp.preview_token AS "previewToken",
       sp.view_count AS "viewCount",
+      (SELECT COUNT(*)::int FROM page_messages pm WHERE pm.page_id = sp.id AND pm.is_approved = FALSE) AS "pendingMessageCount",
       sp.settings AS "settings",
       sp.published_at AS "publishedAt",
+      sp.deleted_at AS "deletedAt",
       sp.created_at AS "createdAt",
       sp.updated_at AS "updatedAt"
     FROM special_pages sp
     JOIN templates t ON t.id = sp.template_id
+    JOIN users u ON u.id = sp.owner_user_id
   `,
   selectById: `
     SELECT
       sp.id,
       sp.owner_user_id AS "ownerUserId",
+      u.full_name AS "ownerFullName",
+      u.email AS "ownerEmail",
       sp.slug,
       sp.template_id AS "templateId",
       t.code AS "templateCode",
@@ -133,19 +146,35 @@ export const specialPagesEntityAdmin = {
       sp.access_password_hash AS "accessPasswordHash",
       sp.custom_domain AS "customDomain",
       sp.status,
+      sp.preview_token AS "previewToken",
       sp.view_count AS "viewCount",
+      (SELECT COUNT(*)::int FROM page_messages pm WHERE pm.page_id = sp.id AND pm.is_approved = FALSE) AS "pendingMessageCount",
       sp.settings AS "settings",
       sp.published_at AS "publishedAt",
+      sp.deleted_at AS "deletedAt",
       sp.created_at AS "createdAt",
       sp.updated_at AS "updatedAt"
     FROM special_pages sp
     JOIN templates t ON t.id = sp.template_id
+    JOIN users u ON u.id = sp.owner_user_id
   `,
 };
+
+export function formatOwnerLabel(page: {
+  ownerFullName?: string | null;
+  ownerEmail?: string | null;
+}): string {
+  const name = page.ownerFullName?.trim();
+  const email = page.ownerEmail?.trim();
+  if (name && email) return `${name} · ${email}`;
+  return name || email || "Bilinmeyen kullanıcı";
+}
 
 export function mapSpecialPageAdminRow(row: {
   id: string;
   ownerUserId: string;
+  ownerFullName?: string | null;
+  ownerEmail?: string | null;
   slug: string;
   templateId: string;
   templateCode: string;
@@ -160,9 +189,11 @@ export function mapSpecialPageAdminRow(row: {
   accessPasswordHash: string | null;
   customDomain: string | null;
   status: "draft" | "published" | "archived";
+  previewToken: string | null;
   viewCount: number;
   settings: Record<string, unknown>;
   publishedAt: Date | null;
+  deletedAt: Date | null;
   createdAt: Date;
   updatedAt: Date;
 }): SpecialPageAdmin {

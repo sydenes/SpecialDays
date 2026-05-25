@@ -6,8 +6,12 @@ import {
   postTemplate,
   removeTemplate,
 } from "../controllers/templates.controller.js";
+import { requireAuth } from "../middleware/requireAuth.js";
+import { requireAdmin } from "../middleware/requireAdmin.js";
 
 const router = express.Router();
+
+router.use("/api/dashboard/templates", requireAuth, requireAdmin);
 
 // /api/dashboard/templates/*
 router.get("/api/dashboard/templates", listTemplates);

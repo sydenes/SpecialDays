@@ -1,6 +1,7 @@
 import { buildGoogleCalendarUrl } from '../../lib/calendarUrl.js'
 import { formatEventDateTr } from '../../lib/eventFormat.js'
 import { photoSrc } from '../../lib/photoUrl.js'
+import { GuestMessageList } from '../published/GuestMessageList.jsx'
 import './BeautyPublishedLayout.css'
 
 function textByKey(texts, key) {
@@ -78,7 +79,9 @@ export function BeautyPublishedLayout({
   cd,
   showCountdown,
   showGuestbook,
+  messages = [],
   guestError,
+  guestSuccess,
   authorName,
   setAuthorName,
   authorEmail,
@@ -253,6 +256,13 @@ export function BeautyPublishedLayout({
           {showGuestbook ? (
             <div className="beauty-col-4">
               <form className="tm-contact-form" onSubmit={onSubmitMessage}>
+                {messages.length > 0 ? (
+                  <div className="guest-messages-block guest-messages-block--beauty">
+                    <h4 className="guest-messages-heading">Mesajlar</h4>
+                    <GuestMessageList messages={messages} />
+                  </div>
+                ) : null}
+                {guestSuccess ? <p className="guest-success">{guestSuccess}</p> : null}
                 {guestError ? <p className="published-error published-error--inline">{guestError}</p> : null}
                 <div className="form-group mb-4">
                   <input

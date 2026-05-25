@@ -6,6 +6,11 @@ export type PageMessage = {
   createdAt: Date;
 };
 
+export type PageMessageAdmin = PageMessage & {
+  isApproved: boolean;
+  approvedAt: Date | null;
+};
+
 export const pageMessagesEntity = {
   table: "page_messages",
   columns: [
@@ -36,3 +41,22 @@ export function mapPageMessageRow(row: {
   };
 }
 
+export function mapPageMessageAdminRow(row: {
+  id: string;
+  authorName: string;
+  authorEmail: string | null;
+  messageText: string;
+  isApproved: boolean;
+  approvedAt: Date | null;
+  createdAt: Date;
+}): PageMessageAdmin {
+  return {
+    id: row.id,
+    authorName: row.authorName,
+    authorEmail: row.authorEmail,
+    messageText: row.messageText,
+    isApproved: row.isApproved,
+    approvedAt: row.approvedAt,
+    createdAt: row.createdAt,
+  };
+}
