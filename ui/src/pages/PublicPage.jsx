@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { useParams } from 'react-router-dom'
 import { API_BASE } from '../lib/api.js'
 import { PublishedPageView } from './published/PublishedPageView.jsx'
+import { PublicPageOgHead } from '../components/PublicPageOgHead.jsx'
 import './PublicPage.css'
 
 export function PublicPage() {
@@ -93,14 +94,17 @@ export function PublicPage() {
   }
 
   return (
-    <PublishedPageView
-      page={page}
-      photos={photos}
-      texts={textsSorted}
-      messages={messages}
-      slug={slug}
-      previewMode={false}
-      embedded={false}
-    />
+    <>
+      <PublicPageOgHead slug={slug} page={page} />
+      <PublishedPageView
+        page={page}
+        photos={photos}
+        texts={textsSorted}
+        messages={messages}
+        slug={slug}
+        previewMode={false}
+        embedded={false}
+      />
+    </>
   )
 }

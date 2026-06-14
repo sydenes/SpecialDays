@@ -8,23 +8,39 @@ export const KEY_LABELS = {
   message: 'Mesajınız',
 }
 
+export function normalizeTextBlocks(template) {
+  const raw = template?.configSchema?.textBlocks
+  if (Array.isArray(raw)) {
+    return raw.filter((b) => b && typeof b.key === 'string' && b.key.trim())
+  }
+  if (typeof raw === 'string' && raw.trim()) {
+    try {
+      const parsed = JSON.parse(raw)
+      if (Array.isArray(parsed)) {
+        return parsed.filter((b) => b && typeof b.key === 'string' && b.key.trim())
+      }
+    } catch {
+      /* bozuk şema */
+    }
+  }
+  return []
+}
+
 export function textBlockKeys(template) {
   const rules = template?.configSchema?.contentRules
   const max = parseContentRuleNumber(rules?.maxTexts) ?? 3
-  const blocks = template?.configSchema?.textBlocks
-  if (Array.isArray(blocks) && blocks.length > 0) {
-    const keys = blocks.map((b) => b.key).filter(Boolean)
+  const blocks = normalizeTextBlocks(template)
+  if (blocks.length > 0) {
+    const keys = blocks.map((b) => b.key.trim())
     return keys.slice(0, Math.max(0, max))
   }
   return Array.from({ length: Math.max(0, max) }, (_, i) => `text-${i + 1}`)
 }
 
 export function labelForKey(template, key) {
-  const blocks = template?.configSchema?.textBlocks
-  if (Array.isArray(blocks)) {
-    const b = blocks.find((x) => x.key === key)
-    if (b && typeof b.label === 'string') return b.label
-  }
+  const blocks = normalizeTextBlocks(template)
+  const b = blocks.find((x) => x.key === key)
+  if (b && typeof b.label === 'string' && b.label.trim()) return b.label.trim()
   return KEY_LABELS[key] || `Metin: ${key}`
 }
 

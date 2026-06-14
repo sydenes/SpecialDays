@@ -114,11 +114,10 @@ export async function upsertPageContentByPageId(pageId: string, input: UpsertPag
       }
     }
 
-    const mergedSettings = {
-      ...(pageInfo.settings ?? {}),
-      ...(themeColor ? { themeColor } : {}),
-      ...(musicUrl ? { musicUrl } : {}),
-    };
+    const mergedSettings: Record<string, unknown> = { ...(pageInfo.settings ?? {}) };
+    if (themeColor) mergedSettings.themeColor = themeColor;
+    if (musicUrl) mergedSettings.musicUrl = musicUrl;
+    else delete mergedSettings.musicUrl;
 
     await client.query(`UPDATE special_pages SET settings = $1::jsonb WHERE id = $2`, [
       JSON.stringify(mergedSettings),

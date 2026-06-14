@@ -5,6 +5,7 @@ import { buildGoogleCalendarUrl } from '../../lib/calendarUrl.js'
 import { formatEventDateTr } from '../../lib/eventFormat.js'
 import { photoSrc } from '../../lib/photoUrl.js'
 import { BeautyPublishedLayout } from '../beauty/BeautyPublishedLayout.jsx'
+import { PageMusicPlayer } from '../../components/PageMusicPlayer.jsx'
 import {
   isLikelyBirthdayPage,
   LAYOUTS_WITH_HERO_THUMB_SWAP,
@@ -277,7 +278,9 @@ export function PublishedPageView({
             Canlı önizleme
           </div>
         ) : null}
-        {musicUrl ? <audio src={musicUrl} controls className="beauty-top-audio" /> : null}
+        {musicUrl ? (
+          <PageMusicPlayer url={musicUrl} className="beauty-top-audio" variant="inline" title={`${page.title || 'Sayfa'} müziği`} />
+        ) : null}
         <BeautyPublishedLayout
           page={page}
           photos={photos || []}
@@ -325,16 +328,6 @@ export function PublishedPageView({
         </div>
       ) : null}
       <div className="published-premium-bg" />
-      {!embedded ? (
-        <header className="published-topbar">
-          <a href="/" className="published-brand">
-            Special Days
-          </a>
-          <a href="/" className="published-home-btn">
-            Ana sayfa
-          </a>
-        </header>
-      ) : null}
 
       <main className="published-premium-shell">
         <motion.section className="published-premium-hero" {...fadeUp}>
@@ -421,8 +414,8 @@ export function PublishedPageView({
           <motion.section className="published-music-section" {...fadeUp}>
             <div className="published-music-visual" />
             <div className="published-music-content">
-              <p>En sevdigimiz sarki</p>
-              <audio src={musicUrl} controls className="published-audio" />
+              <p>En sevdiğimiz şarkı</p>
+              <PageMusicPlayer url={musicUrl} className="published-audio" title={`${page.title || 'Sayfa'} müziği`} />
             </div>
           </motion.section>
         ) : null}

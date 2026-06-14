@@ -9,6 +9,12 @@ export const env = {
   DATABASE_URL: process.env.DATABASE_URL,
   JWT_SECRET: process.env.JWT_SECRET || "dev-change-me-specialdays-jwt-secret",
   JWT_EXPIRES_IN: process.env.JWT_EXPIRES_IN || "7d",
+  /** Paylaşılan sayfa URL kökü (og:url) */
+  PUBLIC_SITE_URL: process.env.PUBLIC_SITE_URL || "http://localhost:5173",
+  /** og:image ve API foto mutlak adresi */
+  PUBLIC_API_URL: process.env.PUBLIC_API_URL || "http://localhost:4000",
+  /** Production: ui/dist yolu — crawler OG + SPA servisi */
+  UI_DIST_PATH: process.env.UI_DIST_PATH || "",
 };
 
 if (!env.DATABASE_URL) {

@@ -105,6 +105,11 @@
   width: 100%;
 }
 
+.beauty-top-audio.page-music-player--youtube iframe {
+  min-height: 152px;
+  border-radius: 8px;
+}
+
 .beauty-published .tm-mb-25 {
   margin-bottom: 25px;
 }

@@ -334,6 +334,7 @@ export function usePageForm({ mode, editSlug }) {
     const nextIsPublic = publish
 
     setSubmitting(true)
+    let redirect = null
     try {
       let targetPageId = pageId
       let nextPreviewToken = previewToken
@@ -449,23 +450,24 @@ export function usePageForm({ mode, editSlug }) {
         return
       }
 
-      setPageStatus(nextStatus)
-      setPreviewToken(nextPreviewToken)
-
-      navigate(`/published/${s}`, {
-        replace: true,
+      redirect = {
+        path: `/published/${s}`,
         state: {
           title: t,
           wasEdit: isEdit,
           outcome: publish ? 'published' : 'draft',
           previewToken: nextPreviewToken,
         },
-      })
+      }
     } catch (err) {
       console.error('Sayfa kaydetme hatası:', err)
       setFormError('Sunucuya bağlanılamadı.')
     } finally {
       setSubmitting(false)
+    }
+
+    if (redirect) {
+      navigate(redirect.path, { replace: true, state: redirect.state })
     }
   }
 

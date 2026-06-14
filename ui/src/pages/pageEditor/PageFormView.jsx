@@ -4,6 +4,7 @@ import { photoSrc } from '../../lib/photoUrl.js'
 import { stockPhotoSrc } from '../../lib/defaultPhotos.js'
 import { fileDedupeKey, labelForKey } from './pageFormUtils.js'
 import { getPreviewPageUrl, getPublicPageUrl } from '../../lib/pageUrl.js'
+import { MUSIC_URL_HINT } from '../../lib/musicUrl.js'
 import { PageLivePreview } from './PageLivePreview.jsx'
 import { usePreviewPhotoList } from './usePreviewPhotoList.js'
 import '../flowPages.css'
@@ -112,28 +113,55 @@ export function PageFormView({
       <div className="page-editor-layout">
         <div className="page-editor-form-col">
       <form className="create-form" onSubmit={(e) => e.preventDefault()} noValidate autoComplete="off">
-        <label>
+        <label htmlFor="page-field-slug">
           Sayfa adresi (slug)
-          <input value={slug} onChange={(e) => setSlug(e.target.value)} placeholder="john-ve-martha" />
+          <input
+            id="page-field-slug"
+            name="slug"
+            value={slug}
+            onChange={(e) => setSlug(e.target.value)}
+            placeholder="john-ve-martha"
+            autoComplete="off"
+          />
           <span className="form-hint">Örn: site.com/john-ve-martha — yalnızca küçük harf, rakam, tire.</span>
         </label>
-        <label>
+        <label htmlFor="page-field-title">
           Sayfa başlığı
-          <input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="John & Martha Düğünü" />
+          <input
+            id="page-field-title"
+            name="title"
+            value={title}
+            onChange={(e) => setTitle(e.target.value)}
+            placeholder="John & Martha Düğünü"
+          />
         </label>
-        <label>
+        <label htmlFor="page-field-event-date">
           Etkinlik tarihi
-          <input type="datetime-local" value={eventDate} onChange={(e) => setEventDate(e.target.value)} />
+          <input
+            id="page-field-event-date"
+            name="eventDate"
+            type="datetime-local"
+            value={eventDate}
+            onChange={(e) => setEventDate(e.target.value)}
+          />
         </label>
-        <label>
+        <label htmlFor="page-field-main-text">
           Karşılama metni
-          <textarea value={mainText} onChange={(e) => setMainText(e.target.value)} placeholder="Davet metniniz..." />
+          <textarea
+            id="page-field-main-text"
+            name="mainText"
+            value={mainText}
+            onChange={(e) => setMainText(e.target.value)}
+            placeholder="Davet metniniz..."
+          />
         </label>
 
         {keys.map((k) => (
-          <label key={k}>
+          <label key={k} htmlFor={`page-field-text-${k}`}>
             {labelForKey(template, k)}
             <textarea
+              id={`page-field-text-${k}`}
+              name={`text_${k}`}
               value={textByKey[k] ?? ''}
               onChange={(e) => setTextByKey((prev) => ({ ...prev, [k]: e.target.value }))}
             />
@@ -141,9 +169,13 @@ export function PageFormView({
         ))}
 
         <div className="create-photos-field">
-          <span className="create-photos-label">Fotoğraflar</span>
+          <label htmlFor="page-field-photos" className="create-photos-label">
+            Fotoğraflar
+          </label>
           <p className="form-hint create-photos-required">En az bir fotoğraf zorunludur.</p>
           <input
+            id="page-field-photos"
+            name="photos"
             type="file"
             accept="image/jpeg,image/png,image/webp,image/gif"
             multiple
@@ -229,13 +261,27 @@ export function PageFormView({
           )}
         </div>
 
-        <label>
+        <label htmlFor="page-field-theme-color">
           Tema rengi (isteğe bağlı)
-          <input value={themeColor} onChange={(e) => setThemeColor(e.target.value)} placeholder="#c41e3a" />
+          <input
+            id="page-field-theme-color"
+            name="themeColor"
+            value={themeColor}
+            onChange={(e) => setThemeColor(e.target.value)}
+            placeholder="#c41e3a"
+          />
         </label>
-        <label>
-          Müzik URL (isteğe bağlı)
-          <input value={musicUrl} onChange={(e) => setMusicUrl(e.target.value)} placeholder="https://..." />
+        <label htmlFor="page-field-music-url">
+          Müzik bağlantısı (isteğe bağlı)
+          <input
+            id="page-field-music-url"
+            name="musicUrl"
+            type="url"
+            value={musicUrl}
+            onChange={(e) => setMusicUrl(e.target.value)}
+            placeholder="https://www.youtube.com/watch?v=..."
+          />
+          <span className="form-hint">{MUSIC_URL_HINT}</span>
         </label>
 
         <div className="form-actions-stack">
@@ -262,7 +308,7 @@ export function PageFormView({
 
       <p style={{ marginTop: '1.5rem' }}>
         {isEdit ? (
-          <Link to="/dashboard">Panele dön</Link>
+          <Link to="/panom">Panoma dön</Link>
         ) : (
           <Link to={categoryFromPick ? `/templates/${categoryFromPick}` : '/templates'}>Başka şablon</Link>
         )}

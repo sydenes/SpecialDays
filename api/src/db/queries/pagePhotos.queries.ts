@@ -25,7 +25,7 @@ export async function getPagePhotosBySlug(slug: string): Promise<PagePhoto[]> {
       (p.image_data IS NOT NULL) AS "hasInline"
     FROM page_photos p
     JOIN special_pages sp ON sp.id = p.page_id
-    WHERE sp.slug = $1 AND sp.status = 'published'
+    WHERE sp.slug = $1 AND sp.status = 'published' AND sp.deleted_at IS NULL
     ORDER BY p.sort_order ASC, p.created_at ASC
     `,
     [slug]

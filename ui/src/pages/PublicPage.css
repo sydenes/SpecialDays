@@ -227,7 +227,9 @@
   margin: 0 0 1rem;
   font-family: 'Cormorant Garamond', Georgia, serif;
   font-size: clamp(1.8rem, 3vw, 2.6rem);
+  line-height: 1.28;
   color: #342a22;
+  overflow-wrap: break-word;
 }
 
 .published-story-grid {
@@ -316,6 +318,32 @@
   width: 100%;
 }
 
+.page-music-player--section {
+  width: 100%;
+}
+
+.page-music-player--youtube iframe {
+  display: block;
+  width: 100%;
+  min-height: 200px;
+  border: 0;
+  border-radius: 12px;
+  background: #111;
+}
+
+.page-music-player--inline.page-music-player--youtube iframe {
+  min-height: 152px;
+}
+
+.page-music-player--audio {
+  width: 100%;
+  max-width: 420px;
+}
+
+.published-music-content .page-music-player--youtube iframe {
+  min-height: 220px;
+}
+
 .published-message-shell {
   display: grid;
   grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.1fr);
@@ -338,7 +366,13 @@
 }
 
 .published-guestbook-left .published-message-note h3 {
-  margin: 0 0 0.65rem;
+  margin: 0 0 0.85rem;
+}
+
+.published-message-note {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
 }
 
 .published-message-shell--split .guest-section {
