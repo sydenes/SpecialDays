@@ -3,6 +3,7 @@
   "version": "1.0.0",
   "description": "",
   "main": "server.js",
+  "start": "tsx server.ts",
   "scripts": {
     "dev": "tsx watch server.ts",
     "init:db": "tsx initDb.ts",

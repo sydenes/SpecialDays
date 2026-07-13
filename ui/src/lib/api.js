@@ -1,6 +1,6 @@
 import { clearStoredToken, getStoredToken, setStoredToken } from './authStorage.js'
 
-export const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:4000'
+export const API_BASE = 'https://special-days.onrender.com' // import.meta.env.VITE_API_URL || 'http://localhost:4000'
 
 export function authHeaders(extra = {}) {
   const token = getStoredToken()
