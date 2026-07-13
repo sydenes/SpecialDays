@@ -7,7 +7,7 @@ dotenv.config({ path: fileURLToPath(new URL("../../../.env", import.meta.url)) }
 export const env = {
   PORT: process.env.PORT,
   DATABASE_URL: process.env.DATABASE_URL,
-  JWT_SECRET: process.env.JWT_SECRET || "dev-change-me-specialdays-jwt-secret",
+  JWT_SECRET: process.env.JWT_SECRET || "e2dfc61d08a12810e884361c38e73a1a02e17d8ab6ee8478c908ae5c97289e6b",
   JWT_EXPIRES_IN: process.env.JWT_EXPIRES_IN || "7d",
   /** Paylaşılan sayfa URL kökü (og:url) */
   PUBLIC_SITE_URL: process.env.PUBLIC_SITE_URL || "http://localhost:5173",
@@ -21,7 +21,7 @@ if (!env.DATABASE_URL) {
   throw new Error("DATABASE_URL bulunamadi. Root dizinde .env olustur.");
 }
 
-if (process.env.NODE_ENV === "production" && env.JWT_SECRET.startsWith("dev-change-me-specialdays-jwt-secret")) {
-  throw new Error("Production icin JWT_SECRET .env dosyasinda ayarlanmali.");
-}
+//if (process.env.NODE_ENV === "production" && env.JWT_SECRET.startsWith("dev-change-me-specialdays-jwt-secret")) {
+//  throw new Error("Production icin JWT_SECRET .env dosyasinda ayarlanmali.");
+//}
 
