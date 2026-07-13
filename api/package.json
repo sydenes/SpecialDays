@@ -4,7 +4,7 @@
   "description": "",
   "main": "server.js",
   "scripts": {
-    "start": "tsx server.ts",
+    "start": "node --import tsx server.ts",
     "dev": "tsx watch server.ts",
     "init:db": "tsx initDb.ts",
     "migrate": "tsx migrateDb.ts",
