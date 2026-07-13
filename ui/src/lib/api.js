@@ -1,6 +1,18 @@
 import { clearStoredToken, getStoredToken, setStoredToken } from './authStorage.js'
 
-export const API_BASE = 'https://special-days.onrender.com' // import.meta.env.VITE_API_URL || 'http://localhost:4000'
+/**
+ * Production: aynı origin (Render Express + ui/dist) → relative '' (CORS yok).
+ * Dev: lokal API.
+ * VITE_API_URL varsa onu kullan.
+ */
+function resolveApiBase() {
+  const fromEnv = typeof import.meta.env.VITE_API_URL === 'string' ? import.meta.env.VITE_API_URL.trim() : ''
+  if (fromEnv) return fromEnv.replace(/\/$/, '')
+  if (import.meta.env.PROD) return ''
+  return 'http://localhost:4000'
+}
+
+export const API_BASE = resolveApiBase()
 
 export function authHeaders(extra = {}) {
   const token = getStoredToken()

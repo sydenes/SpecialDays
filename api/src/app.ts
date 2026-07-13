@@ -19,9 +19,12 @@ app.use(
   cors({
     origin: true,
     credentials: true,
+    methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
     allowedHeaders: ["Content-Type", "Authorization"],
   })
 );
+app.options("/{*path}", cors());
+
 app.use(express.json());
 
 app.get("/health", (req, res) => {
