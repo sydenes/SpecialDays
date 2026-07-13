@@ -1,6 +1,6 @@
 import express from "express";
 import cors from "cors";
-import { join } from "node:path";
+import { join, resolve } from "node:path";
 
 import authRoutes from "./routes/auth.routes.js";
 import pagesRoutes from "./routes/pages.routes.js";
@@ -37,12 +37,13 @@ app.use(dashboardTemplatesRoutes);
 app.use(dashboardPagesRoutes);
 
 if (env.UI_DIST_PATH) {
+  const uiDist = resolve(process.cwd(), env.UI_DIST_PATH);
   app.get("/:slug", ogSpaFallback);
-  app.use(express.static(env.UI_DIST_PATH));
-  app.get("*", (_req, res) => {
-    res.sendFile(join(env.UI_DIST_PATH, "index.html"));
+  app.use(express.static(uiDist));
+  // Express 5 / path-to-regexp v8: bare "*" invalid — named wildcard required
+  app.get("/{*path}", (_req, res) => {
+    res.sendFile(join(uiDist, "index.html"));
   });
 }
 
 app.use(errorHandler);
-

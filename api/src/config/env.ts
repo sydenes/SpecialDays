@@ -21,7 +21,3 @@ if (!env.DATABASE_URL) {
   throw new Error("DATABASE_URL bulunamadi. Root dizinde .env olustur.");
 }
 
-//if (process.env.NODE_ENV === "production" && env.JWT_SECRET.startsWith("dev-change-me-specialdays-jwt-secret")) {
-//  throw new Error("Production icin JWT_SECRET .env dosyasinda ayarlanmali.");
-//}
-
