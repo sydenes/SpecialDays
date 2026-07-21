@@ -8,6 +8,8 @@ import publicApiRoutes from "./routes/publicApi.routes.js";
 import dashboardTemplatesRoutes from "./routes/dashboardTemplates.routes.js";
 import dashboardPagesRoutes from "./routes/dashboardPages.routes.js";
 import mePagesRoutes from "./routes/mePages.routes.js";
+import musicRoutes from "./routes/music.routes.js";
+import placesRoutes from "./routes/places.routes.js";
 import ogRoutes from "./routes/og.routes.js";
 import { ogSpaFallback } from "./middleware/ogSpaFallback.js";
 import { env } from "./config/env.js";
@@ -34,6 +36,8 @@ app.get("/health", (req, res) => {
 app.use(publicApiRoutes);
 app.use(ogRoutes);
 app.use(authRoutes);
+app.use(musicRoutes);
+app.use(placesRoutes);
 app.use(mePagesRoutes);
 app.use(pagesRoutes);
 app.use(dashboardTemplatesRoutes);

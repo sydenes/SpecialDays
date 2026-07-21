@@ -15,6 +15,12 @@ export const env = {
   PUBLIC_API_URL: process.env.PUBLIC_API_URL || "http://localhost:4000",
   /** Production: ui/dist yolu — crawler OG + SPA servisi */
   UI_DIST_PATH: process.env.UI_DIST_PATH || "",
+  /**
+   * Varsayılan müzik klasörü (MP3).
+   * Boşsa SpecialDays'in kardeş klasörü `musics` kullanılır.
+   * Örn: C:/Users/.../Project SpecialDay/musics
+   */
+  MUSIC_LIBRARY_PATH: process.env.MUSIC_LIBRARY_PATH || "",
 };
 
 if (!env.DATABASE_URL) {

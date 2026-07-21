@@ -2,6 +2,8 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { apiFetch } from '../lib/api.js'
 import { useAuth } from '../context/AuthContext.jsx'
+import { formatRsvpMeta } from './published/GuestRsvpFields.jsx'
+import { AttendancePieChart } from './published/AttendancePieChart.jsx'
 import './flowPages.css'
 import './myPanel.css'
 import './pageGuestbook.css'
@@ -133,6 +135,11 @@ export function PageGuestbookPage() {
         <p className="my-panel-muted">Yükleniyor…</p>
       ) : !page ? null : (
         <>
+          <section className="guestbook-admin-section guestbook-admin-stats">
+            <h2>Katılım oranları</h2>
+            <AttendancePieChart messages={messages} />
+          </section>
+
           <section className="guestbook-admin-section">
             <h2>
               Onay bekleyen <span className="guestbook-count">{pending.length}</span>
@@ -144,6 +151,9 @@ export function PageGuestbookPage() {
                 {pending.map((m) => (
                   <li key={m.id} className="guestbook-admin-card guestbook-admin-card--pending">
                     <p className="guestbook-admin-text">{m.messageText}</p>
+                    {formatRsvpMeta(m) ? (
+                      <p className="guestbook-admin-rsvp">{formatRsvpMeta(m)}</p>
+                    ) : null}
                     <p className="guestbook-admin-meta">
                       <strong>{m.authorName}</strong>
                       {m.authorEmail ? <span>{m.authorEmail}</span> : null}
@@ -184,6 +194,9 @@ export function PageGuestbookPage() {
                 {approved.map((m) => (
                   <li key={m.id} className="guestbook-admin-card">
                     <p className="guestbook-admin-text">{m.messageText}</p>
+                    {formatRsvpMeta(m) ? (
+                      <p className="guestbook-admin-rsvp">{formatRsvpMeta(m)}</p>
+                    ) : null}
                     <p className="guestbook-admin-meta">
                       <strong>{m.authorName}</strong>
                       <span>{formatWhen(m.createdAt)}</span>

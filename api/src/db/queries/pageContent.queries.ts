@@ -20,6 +20,19 @@ export type UpsertPageContentInput = {
   texts?: PageContentTextInput[] | null;
   themeColor?: string | null;
   musicUrl?: string | null;
+  /** Küratörlü kütüphane parçası; musicUrl ile birlikte gelirse musicId önceliklidir */
+  musicId?: string | null;
+  giftEnabled?: boolean;
+  giftBankName?: string | null;
+  giftRecipientName?: string | null;
+  giftIban?: string | null;
+  locationEnabled?: boolean;
+  locationVenueName?: string | null;
+  locationAddress?: string | null;
+  locationLat?: number | null;
+  locationLon?: number | null;
+  /** Sayfa bileşen aç/kapa tercihleri */
+  components?: Record<string, unknown> | null;
 };
 
 type TemplateRuleConfig = {
@@ -30,7 +43,23 @@ type TemplateRuleConfig = {
 };
 
 export async function upsertPageContentByPageId(pageId: string, input: UpsertPageContentInput) {
-  const { photos, texts, themeColor = null, musicUrl = null } = input;
+  const {
+    photos,
+    texts,
+    themeColor = null,
+    musicUrl = null,
+    musicId = null,
+    giftEnabled = false,
+    giftBankName = null,
+    giftRecipientName = null,
+    giftIban = null,
+    locationEnabled = false,
+    locationVenueName = null,
+    locationAddress = null,
+    locationLat = null,
+    locationLon = null,
+    components = null,
+  } = input;
 
   const pageInfoRes = await pool.query(
     `
@@ -116,8 +145,54 @@ export async function upsertPageContentByPageId(pageId: string, input: UpsertPag
 
     const mergedSettings: Record<string, unknown> = { ...(pageInfo.settings ?? {}) };
     if (themeColor) mergedSettings.themeColor = themeColor;
-    if (musicUrl) mergedSettings.musicUrl = musicUrl;
-    else delete mergedSettings.musicUrl;
+    if (musicId) {
+      mergedSettings.musicId = musicId;
+      delete mergedSettings.musicUrl;
+    } else {
+      delete mergedSettings.musicId;
+      if (musicUrl) mergedSettings.musicUrl = musicUrl;
+      else delete mergedSettings.musicUrl;
+    }
+
+    if (giftEnabled && giftIban) {
+      mergedSettings.giftEnabled = true;
+      mergedSettings.giftIban = giftIban;
+      if (giftBankName) mergedSettings.giftBankName = giftBankName;
+      else delete mergedSettings.giftBankName;
+      if (giftRecipientName) mergedSettings.giftRecipientName = giftRecipientName;
+      else delete mergedSettings.giftRecipientName;
+    } else {
+      delete mergedSettings.giftEnabled;
+      delete mergedSettings.giftBankName;
+      delete mergedSettings.giftRecipientName;
+      delete mergedSettings.giftIban;
+    }
+
+    if (locationEnabled && (locationVenueName || locationAddress)) {
+      mergedSettings.locationEnabled = true;
+      if (locationVenueName) mergedSettings.locationVenueName = locationVenueName;
+      else delete mergedSettings.locationVenueName;
+      if (locationAddress) mergedSettings.locationAddress = locationAddress;
+      else delete mergedSettings.locationAddress;
+      if (typeof locationLat === "number" && Number.isFinite(locationLat)) {
+        mergedSettings.locationLat = locationLat;
+      } else delete mergedSettings.locationLat;
+      if (typeof locationLon === "number" && Number.isFinite(locationLon)) {
+        mergedSettings.locationLon = locationLon;
+      } else delete mergedSettings.locationLon;
+    } else {
+      delete mergedSettings.locationEnabled;
+      delete mergedSettings.locationVenueName;
+      delete mergedSettings.locationAddress;
+      delete mergedSettings.locationLat;
+      delete mergedSettings.locationLon;
+    }
+
+    if (components && typeof components === "object") {
+      mergedSettings.components = components;
+    } else {
+      delete mergedSettings.components;
+    }
 
     await client.query(`UPDATE special_pages SET settings = $1::jsonb WHERE id = $2`, [
       JSON.stringify(mergedSettings),

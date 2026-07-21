@@ -7,6 +7,7 @@ import { migratePageDraftPreview } from "./src/db/migrations/pageDraftPreview.js
 import { migrateUserRoles } from "./src/db/migrations/userRoles.js";
 import { migratePageSoftDelete } from "./src/db/migrations/pageSoftDelete.js";
 import { migrateTemplateVariants } from "./src/db/migrations/templateVariants.js";
+import { migratePageMessageRsvp } from "./src/db/migrations/pageMessageRsvp.js";
 
 dotenv.config({ path: fileURLToPath(new URL("../.env", import.meta.url)) });
 
@@ -25,6 +26,7 @@ async function main() {
     await migratePageDraftPreview(pool);
     await migrateUserRoles(pool);
     await migratePageSoftDelete(pool);
+    await migratePageMessageRsvp(pool);
     console.log("Migrasyonlar bitti.");
   } catch (err) {
     console.error("Migrasyon hatasi:", err);

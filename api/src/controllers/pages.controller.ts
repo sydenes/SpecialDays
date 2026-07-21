@@ -88,21 +88,59 @@ export async function postMessageByPageSlug(req: Request, res: Response, next: N
       authorName?: unknown;
       authorEmail?: unknown;
       messageText?: unknown;
+      attendanceStatus?: unknown;
+      guestCount?: unknown;
+      declineReason?: unknown;
     };
 
     const authorName = typeof body.authorName === "string" ? body.authorName.trim() : "";
     const authorEmail =
       typeof body.authorEmail === "string" && body.authorEmail.trim().length > 0 ? body.authorEmail.trim() : null;
     const messageText = typeof body.messageText === "string" ? body.messageText.trim() : "";
+    const attendanceRaw = typeof body.attendanceStatus === "string" ? body.attendanceStatus.trim() : "";
+    const attendanceStatus =
+      attendanceRaw === "attending" ||
+      attendanceRaw === "not_attending" ||
+      attendanceRaw === "undecided"
+        ? attendanceRaw
+        : null;
+    const declineReason =
+      typeof body.declineReason === "string" && body.declineReason.trim().length > 0
+        ? body.declineReason.trim().slice(0, 500)
+        : null;
+
+    let guestCount: number | null = null;
+    if (typeof body.guestCount === "number" && Number.isFinite(body.guestCount)) {
+      guestCount = Math.floor(body.guestCount);
+    } else if (typeof body.guestCount === "string" && body.guestCount.trim()) {
+      const n = Number.parseInt(body.guestCount.trim(), 10);
+      if (Number.isFinite(n)) guestCount = n;
+    }
 
     if (!slug) return res.status(400).json({ error: "Slug is required" });
-    if (!authorName) return res.status(400).json({ error: "authorName is required" });
-    if (!messageText) return res.status(400).json({ error: "messageText is required" });
+    if (!authorName) return res.status(400).json({ error: "İsim zorunludur." });
+    if (!messageText) return res.status(400).json({ error: "Mesaj zorunludur." });
+    if (!attendanceStatus) {
+      return res.status(400).json({ error: "Katılım durumunu seçin." });
+    }
+    if (attendanceStatus === "attending") {
+      if (guestCount == null || guestCount < 1) {
+        return res.status(400).json({ error: "Katılacaksanız kişi sayısı en az 1 olmalıdır." });
+      }
+      if (guestCount > 50) {
+        return res.status(400).json({ error: "Kişi sayısı en fazla 50 olabilir." });
+      }
+    } else {
+      guestCount = null;
+    }
 
     const message = await createPendingMessageBySlug(slug, {
       authorName,
       authorEmail,
       messageText,
+      attendanceStatus,
+      guestCount: attendanceStatus === "attending" ? guestCount : null,
+      declineReason: attendanceStatus === "not_attending" ? declineReason : null,
     });
 
     return res.status(201).json({

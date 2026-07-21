@@ -2,6 +2,10 @@ import { buildGoogleCalendarUrl } from '../../lib/calendarUrl.js'
 import { formatEventDateTr } from '../../lib/eventFormat.js'
 import { photoSrc } from '../../lib/photoUrl.js'
 import { GuestMessageList } from '../published/GuestMessageList.jsx'
+import { GuestRsvpFields } from '../published/GuestRsvpFields.jsx'
+import { GiftIbanCard } from '../published/GiftIbanCard.jsx'
+import { LocationCard } from '../published/LocationCard.jsx'
+import { isTextBlockEnabled } from '../../lib/pageComponents.js'
 import './BeautyPublishedLayout.css'
 
 function textByKey(texts, key) {
@@ -79,6 +83,8 @@ export function BeautyPublishedLayout({
   cd,
   showCountdown,
   showGuestbook,
+  showMainText = true,
+  showSaveTheDate = true,
   messages = [],
   guestError,
   guestSuccess,
@@ -88,13 +94,23 @@ export function BeautyPublishedLayout({
   setAuthorEmail,
   messageText,
   setMessageText,
+  attendanceStatus,
+  setAttendanceStatus,
+  guestCount,
+  setGuestCount,
   posting,
   onSubmitMessage,
+  giftSettings,
 }) {
   const intro = textByKey(textsSorted, 'intro')
   const story = textByKey(textsSorted, 'story')
   const details = textByKey(textsSorted, 'details')
   const footer = textByKey(textsSorted, 'footer')
+  const settings = page?.settings
+  const showIntroText = isTextBlockEnabled(settings, 'intro')
+  const showStorySection = isTextBlockEnabled(settings, 'story')
+  const showDetailsSection = isTextBlockEnabled(settings, 'details')
+  const showFooterSection = isTextBlockEnabled(settings, 'footer')
 
   const bgUrl = (i) => {
     const p = photos[i]
@@ -110,7 +126,7 @@ export function BeautyPublishedLayout({
       <div className="beauty-container">
         <div className="tm-top-bar" />
 
-        <section className="tm-welcome">
+        <section className="tm-welcome" data-preview-anchor="preview-hero">
           <div className="tm-welcome-left">
             <div className="tm-logo">
               <h1 className="tm-site-name">{page.title}</h1>
@@ -120,12 +136,22 @@ export function BeautyPublishedLayout({
                 <IconCrown />
                 <IconHeart />
               </div>
-              {showCountdown && cd ? <BeautyCountdown cd={cd} /> : null}
-              <h2 className="tm-mb-25">{intro || 'Özel gününüze hoş geldiniz'}</h2>
-              {page.mainText ? (
-                <p className="tm-font-big">
+              {showCountdown && cd ? (
+                <div data-preview-anchor="preview-countdown">
+                  <BeautyCountdown cd={cd} />
+                </div>
+              ) : null}
+              {showIntroText ? (
+                <h2 className="tm-mb-25" data-preview-anchor="preview-text-intro">
+                  {intro || 'Özel gününüze hoş geldiniz'}
+                </h2>
+              ) : (
+                <h2 className="tm-mb-25">{page.title}</h2>
+              )}
+              {showMainText && page.mainText ? (
+                <p className="tm-font-big" data-preview-anchor="preview-main-text">
                   {page.mainText}
-                  {page.eventDate ? (
+                  {showSaveTheDate && page.eventDate ? (
                     <>
                       {' '}
                       <a href={calHref} target="_blank" rel="noopener noreferrer">
@@ -134,13 +160,19 @@ export function BeautyPublishedLayout({
                     </>
                   ) : null}
                 </p>
-              ) : (
-                <p className="tm-font-big">
+              ) : showMainText ? (
+                <p className="tm-font-big" data-preview-anchor="preview-main-text">
                   Bu sayfayı oluştururken karşılama metninizi ve fotoğraflarınızı ekleyerek zenginleştirebilirsiniz.
                 </p>
-              )}
-              {page.eventDate ? (
-                <a href={calHref} className="tm-welcome-link tm-font-big" target="_blank" rel="noopener noreferrer">
+              ) : null}
+              {showSaveTheDate && page.eventDate ? (
+                <a
+                  href={calHref}
+                  className="tm-welcome-link tm-font-big"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  data-preview-anchor="preview-save-the-date"
+                >
                   Devam…
                 </a>
               ) : null}
@@ -152,68 +184,80 @@ export function BeautyPublishedLayout({
 
         <div className="tm-bar-2" />
 
-        <section className="beauty-row tm-section-mb tm-section-2">
-          <div className="beauty-col-12">
-            <div className="tm-section-2-inner">
-              <div className="tm-section-2-left">
-                <div
-                  className="tm-img-container tm-img-container-1"
-                  style={bgUrl(0) ? { backgroundImage: `url(${bgUrl(0)})` } : undefined}
-                />
-                <div
-                  className="tm-img-container tm-img-container-2"
-                  style={bgUrl(1) ? { backgroundImage: `url(${bgUrl(1)})` } : undefined}
-                />
-              </div>
-              <div className="tm-section-2-right tm-bg-primary">
-                <div className="tm-section-2-text">{renderStoryBody(story, 'h2', 'tm-section-2-header tm-mb-45')}</div>
-              </div>
-            </div>
-          </div>
-        </section>
-
-        <section className="beauty-row tm-section-3">
-          <div className="beauty-col-12">
-            <div className="tm-section-3-inner">
-              <div className="tm-section-3-left tm-bg-primary">
-                <div className="tm-section-3-text">
-                  <IconUsers />
-                  <h2 className="tm-section-3-header tm-mb-35">Anılar &amp; detaylar</h2>
-                  {details ? (
-                    details.includes('\n\n') ? (
-                      renderStoryBody(details, 'h3', 'tm-mb-35')
-                    ) : (
-                      <p>{details}</p>
-                    )
-                  ) : (
-                    <p>Detay metnini (details) oluştururken ekleyin.</p>
-                  )}
-                  {page.eventDate ? (
-                    <a href={calHref} className="d-block tm-welcome-link" target="_blank" rel="noopener noreferrer">
-                      Tarih: {eventLabel}
-                    </a>
-                  ) : null}
+        {showStorySection ? (
+          <section
+            className="beauty-row tm-section-mb tm-section-2"
+            data-preview-anchor="preview-text-story"
+          >
+            <div className="beauty-col-12">
+              <div className="tm-section-2-inner">
+                <div className="tm-section-2-left">
+                  <div
+                    className="tm-img-container tm-img-container-1"
+                    style={bgUrl(0) ? { backgroundImage: `url(${bgUrl(0)})` } : undefined}
+                  />
+                  <div
+                    className="tm-img-container tm-img-container-2"
+                    style={bgUrl(1) ? { backgroundImage: `url(${bgUrl(1)})` } : undefined}
+                  />
+                </div>
+                <div className="tm-section-2-right tm-bg-primary">
+                  <div className="tm-section-2-text">{renderStoryBody(story, 'h2', 'tm-section-2-header tm-mb-45')}</div>
                 </div>
               </div>
-              <div className="tm-section-3-right">
-                <div
-                  className="tm-img-container tm-img-container-3"
-                  style={bgUrl(2) ? { backgroundImage: `url(${bgUrl(2)})` } : undefined}
-                />
+            </div>
+          </section>
+        ) : null}
+
+        {showDetailsSection ? (
+          <section className="beauty-row tm-section-3" data-preview-anchor="preview-text-details">
+            <div className="beauty-col-12">
+              <div className="tm-section-3-inner">
+                <div className="tm-section-3-left tm-bg-primary">
+                  <div className="tm-section-3-text">
+                    <IconUsers />
+                    <h2 className="tm-section-3-header tm-mb-35">Anılar &amp; detaylar</h2>
+                    {details ? (
+                      details.includes('\n\n') ? (
+                        renderStoryBody(details, 'h3', 'tm-mb-35')
+                      ) : (
+                        <p>{details}</p>
+                      )
+                    ) : (
+                      <p>Detay metnini (details) oluştururken ekleyin.</p>
+                    )}
+                    {page.eventDate ? (
+                      <a href={calHref} className="d-block tm-welcome-link" target="_blank" rel="noopener noreferrer">
+                        Tarih: {eventLabel}
+                      </a>
+                    ) : null}
+                  </div>
+                </div>
+                <div className="tm-section-3-right">
+                  <div
+                    className="tm-img-container tm-img-container-3"
+                    style={bgUrl(2) ? { backgroundImage: `url(${bgUrl(2)})` } : undefined}
+                  />
+                </div>
               </div>
             </div>
-          </div>
-        </section>
+          </section>
+        ) : null}
 
-        <section className="beauty-row tm-section-pt tm-section-pb">
-          <div className="beauty-col-6 mx-auto text-center">
-            <h2 className="tm-text-dark tm-mb-50">BİRLİKTE KUTLUYORUZ</h2>
-            <p className="tm-text-light-dark tm-font-big">
-              {footer ||
-                'Sevdiklerinizle bu özel günü paylaşın; fotoğraf galerisinden anıları görün, aşağıdan not bırakın.'}
-            </p>
-          </div>
-        </section>
+        {showFooterSection ? (
+          <section
+            className="beauty-row tm-section-pt tm-section-pb"
+            data-preview-anchor="preview-text-footer"
+          >
+            <div className="beauty-col-6 mx-auto text-center">
+              <h2 className="tm-text-dark tm-mb-50">BİRLİKTE KUTLUYORUZ</h2>
+              <p className="tm-text-light-dark tm-font-big">
+                {footer ||
+                  'Sevdiklerinizle bu özel günü paylaşın; fotoğraf galerisinden anıları görün, aşağıdan not bırakın.'}
+              </p>
+            </div>
+          </section>
+        ) : null}
 
         {photos.length > 0 ? (
           <section className="beauty-row tm-section-pb">
@@ -232,6 +276,9 @@ export function BeautyPublishedLayout({
             </div>
           </section>
         ) : null}
+
+        <LocationCard settings={giftSettings || page?.settings} className="beauty-location-card" />
+        <GiftIbanCard settings={giftSettings || page?.settings} className="beauty-gift-iban" />
 
         <section className="beauty-row">
           <div className="beauty-col-7 d-flex tm-contact-left-col">
@@ -254,7 +301,7 @@ export function BeautyPublishedLayout({
             </div>
           </div>
           {showGuestbook ? (
-            <div className="beauty-col-4">
+            <div className="beauty-col-4" data-preview-anchor="preview-guestbook">
               <form className="tm-contact-form" onSubmit={onSubmitMessage}>
                 {messages.length > 0 ? (
                   <div className="guest-messages-block guest-messages-block--beauty">
@@ -283,6 +330,14 @@ export function BeautyPublishedLayout({
                     onChange={(e) => setAuthorEmail(e.target.value)}
                   />
                 </div>
+                <GuestRsvpFields
+                  attendanceStatus={attendanceStatus}
+                  setAttendanceStatus={setAttendanceStatus}
+                  guestCount={guestCount}
+                  setGuestCount={setGuestCount}
+                  className="guest-rsvp--beauty"
+                  inputClassName="beauty-form-control"
+                />
                 <div className="form-group mb-4">
                   <textarea
                     rows={6}

@@ -56,6 +56,21 @@ export async function getPageBySlugAdmin(slug: string): Promise<SpecialPageAdmin
   return mapSpecialPageAdminRow(rows[0] as any);
 }
 
+/** Slug kullanımda mı? (silinmiş satırlar unique constraint nedeniyle hâlâ “alınmış” sayılır) */
+export async function isSlugTaken(slug: string, excludePageId?: string | null): Promise<boolean> {
+  const normalized = slug.trim().toLowerCase();
+  if (!normalized) return false;
+  if (excludePageId) {
+    const { rows } = await pool.query(
+      `SELECT 1 FROM special_pages WHERE slug = $1 AND id <> $2 LIMIT 1`,
+      [normalized, excludePageId]
+    );
+    return rows.length > 0;
+  }
+  const { rows } = await pool.query(`SELECT 1 FROM special_pages WHERE slug = $1 LIMIT 1`, [normalized]);
+  return rows.length > 0;
+}
+
 export async function createPage(input: CreatePageInput): Promise<SpecialPageAdmin> {
   const {
     ownerUserId,

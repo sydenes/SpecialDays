@@ -2,6 +2,7 @@ import express from "express";
 import multer from "multer";
 import {
   approveMyPageMessage,
+  checkMySlugAvailability,
   deleteMyPagePhoto,
   getMyPage,
   getMyPageBySlug,
@@ -31,6 +32,7 @@ const uploadPhoto = multer({
 router.use("/api/me/pages", requireAuth);
 
 router.get("/api/me/pages", listMyPages);
+router.get("/api/me/pages/slug-available/:slug", checkMySlugAvailability);
 router.get("/api/me/pages/by-slug/:slug", getMyPageBySlug);
 router.get("/api/me/pages/:id", getMyPage);
 router.post("/api/me/pages", postMyPage);

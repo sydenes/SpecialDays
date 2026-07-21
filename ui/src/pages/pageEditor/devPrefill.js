@@ -6,7 +6,8 @@ const DEV_PREFILL_BY_CATEGORY = {
     mainText:
       'Ailelerimizin sevgisiyle bu özel günümüzde sizleri yanımızda görmekten büyük mutluluk duyarız.',
     themeColor: '#b0425f',
-    musicUrl: 'https://www.youtube.com/watch?v=8UVNT4wvIGY',
+    musicId: 'the-mountain-wedding',
+    musicUrl: '',
     textFallbacks: [
       'Hikayemiz üniversitede başladı; her yıl daha güzel bir anı biriktirdik.',
       'Program: Karşılama 19:00, yüzük töreni 20:00, kutlama 21:00.',
@@ -20,7 +21,8 @@ const DEV_PREFILL_BY_CATEGORY = {
     mainText:
       'Bugün senin günün! Seni çok seviyoruz ve bu özel günde yanında olmaktan mutluyuz.',
     themeColor: '#c9a46a',
-    musicUrl: 'https://www.youtube.com/watch?v=lp-EO5I60KA',
+    musicId: 'kontraa-water',
+    musicUrl: '',
     textFallbacks: [
       'Bugün senin günün — kutlu olsun!',
       'Seninle geçirdiğimiz her anı çok seviyoruz.',
@@ -34,7 +36,8 @@ const DEV_PREFILL_BY_CATEGORY = {
     mainText:
       'Beş yıldır el ele, gülümseyerek… Bu yolculukta bizimle olduğunuz için teşekkür ederiz.',
     themeColor: '#8b2942',
-    musicUrl: 'https://www.youtube.com/watch?v=450p7gOxZqg',
+    musicId: 'leberch-emotion',
+    musicUrl: '',
     textFallbacks: [
       'İlk buluşmamızdan bu yana her gün birbirimize daha çok yaklaştık.',
       'Bu akşam birlikte kutlayacağımız anılar için sabırsızlanıyoruz.',
@@ -47,7 +50,8 @@ const DEV_PREFILL_BY_CATEGORY = {
     eventDate: '2026-08-01T19:00',
     mainText: 'Bu özel günde sizleri aramızda görmekten mutluluk duyarız.',
     themeColor: '#c41e3a',
-    musicUrl: 'https://www.youtube.com/watch?v=8UVNT4wvIGY',
+    musicId: 'grand-project-wonders',
+    musicUrl: '',
     textFallbacks: [
       'Sizinle paylaşmak istediğimiz güzel bir mesaj.',
       'Detaylar için bizi takip edebilirsiniz.',

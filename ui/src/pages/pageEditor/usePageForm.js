@@ -18,6 +18,12 @@ import {
   textBlockKeys,
   toDatetimeLocalValue,
 } from './pageFormUtils.js'
+import {
+  defaultPageComponents,
+  listToggleableForTemplate,
+  resolvePageComponentsState,
+  serializePageComponents,
+} from '../../lib/pageComponents.js'
 
 /**
  * @param {{ mode: 'create' | 'edit', editSlug?: string }} options
@@ -47,12 +53,22 @@ export function usePageForm({ mode, editSlug }) {
   const [textByKey, setTextByKey] = useState({})
   const [themeColor, setThemeColor] = useState('#c41e3a')
   const [musicUrl, setMusicUrl] = useState('')
+  const [musicId, setMusicId] = useState('')
+  const [giftBankName, setGiftBankName] = useState('')
+  const [giftRecipientName, setGiftRecipientName] = useState('')
+  const [giftIban, setGiftIban] = useState('')
+  const [locationVenueName, setLocationVenueName] = useState('')
+  const [locationAddress, setLocationAddress] = useState('')
+  const [locationLat, setLocationLat] = useState(/** @type {number | null} */ (null))
+  const [locationLon, setLocationLon] = useState(/** @type {number | null} */ (null))
+  const [pageComponents, setPageComponents] = useState(() => defaultPageComponents(templateFromState))
   const [submitting, setSubmitting] = useState(false)
   const [formError, setFormError] = useState('')
   const [formInfo, setFormInfo] = useState('')
   const [devPrefilled, setDevPrefilled] = useState(false)
   const [pageStatus, setPageStatus] = useState('draft')
   const [previewToken, setPreviewToken] = useState('')
+  const [slugCheck, setSlugCheck] = useState({ status: 'idle', message: '' })
 
   const templateIdParam = searchParams.get('templateId')
   const stockCategory = categoryFromPick || editCategory || 'shared'
@@ -90,6 +106,42 @@ export function usePageForm({ mode, editSlug }) {
         setMusicUrl(
           (page.settings && typeof page.settings.musicUrl === 'string' && page.settings.musicUrl) || ''
         )
+        setMusicId(
+          (page.settings && typeof page.settings.musicId === 'string' && page.settings.musicId) || ''
+        )
+        const resolvedComponents = resolvePageComponentsState(page.settings, tpl)
+        if (page.settings?.giftEnabled === true) {
+          resolvedComponents.gift = true
+        }
+        if (page.settings?.locationEnabled === true) {
+          resolvedComponents.location = true
+        }
+        setPageComponents(resolvedComponents)
+        setGiftBankName(
+          (page.settings && typeof page.settings.giftBankName === 'string' && page.settings.giftBankName) || ''
+        )
+        setGiftRecipientName(
+          (page.settings &&
+            typeof page.settings.giftRecipientName === 'string' &&
+            page.settings.giftRecipientName) ||
+            ''
+        )
+        setGiftIban(
+          (page.settings && typeof page.settings.giftIban === 'string' && page.settings.giftIban) || ''
+        )
+        setLocationVenueName(
+          (page.settings && typeof page.settings.locationVenueName === 'string' && page.settings.locationVenueName) ||
+            ''
+        )
+        setLocationAddress(
+          (page.settings && typeof page.settings.locationAddress === 'string' && page.settings.locationAddress) || ''
+        )
+        setLocationLat(
+          page.settings && typeof page.settings.locationLat === 'number' ? page.settings.locationLat : null
+        )
+        setLocationLon(
+          page.settings && typeof page.settings.locationLon === 'number' ? page.settings.locationLon : null
+        )
         setExistingPhotos(content.photos || [])
         setPhotosToDelete(new Set())
         setPhotoFiles([])
@@ -116,6 +168,58 @@ export function usePageForm({ mode, editSlug }) {
       cancelled = true
     }
   }, [isEdit, editSlug])
+
+  useEffect(() => {
+    const raw = slug.trim().toLowerCase()
+    if (!raw) {
+      setSlugCheck({ status: 'idle', message: '' })
+      return undefined
+    }
+    if (!/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(raw)) {
+      setSlugCheck({
+        status: 'invalid',
+        message: 'Yalnızca küçük harf, rakam ve tire kullanın.',
+      })
+      return undefined
+    }
+
+    // Düzenlemede slug değişmediyse kontrol atlanır
+    if (isEdit && editSlug && raw === editSlug.trim().toLowerCase()) {
+      setSlugCheck({ status: 'available', message: 'Mevcut adresiniz.' })
+      return undefined
+    }
+
+    let cancelled = false
+    setSlugCheck({ status: 'checking', message: 'Kontrol ediliyor…' })
+    const timer = setTimeout(async () => {
+      try {
+        const q = pageId ? `?excludePageId=${encodeURIComponent(pageId)}` : ''
+        const res = await apiFetch(`/api/me/pages/slug-available/${encodeURIComponent(raw)}${q}`)
+        const data = await res.json().catch(() => ({}))
+        if (cancelled) return
+        if (data.available) {
+          setSlugCheck({ status: 'available', message: 'Bu adres müsait.' })
+        } else {
+          setSlugCheck({
+            status: data.reason === 'invalid' ? 'invalid' : 'unavailable',
+            message:
+              typeof data.error === 'string' && data.error.trim()
+                ? data.error.trim()
+                : 'Bu adres kullanılamıyor.',
+          })
+        }
+      } catch {
+        if (!cancelled) {
+          setSlugCheck({ status: 'idle', message: '' })
+        }
+      }
+    }, 450)
+
+    return () => {
+      cancelled = true
+      clearTimeout(timer)
+    }
+  }, [slug, pageId, isEdit, editSlug])
 
   useEffect(() => {
     if (isEdit) return
@@ -150,6 +254,18 @@ export function usePageForm({ mode, editSlug }) {
 
   const keys = useMemo(() => (template ? textBlockKeys(template) : []), [template])
   const stockPhotos = useMemo(() => getStockPhotosForCategory(stockCategory), [stockCategory])
+  const toggleable = useMemo(() => listToggleableForTemplate(template), [template])
+  const giftEnabled = pageComponents?.gift !== false
+  const locationEnabled = pageComponents?.location !== false
+
+  useEffect(() => {
+    if (!template) return
+    setPageComponents((prev) => {
+      const defaults = defaultPageComponents(template)
+      if (!prev || Object.keys(prev).length === 0) return defaults
+      return resolvePageComponentsState({ components: prev }, template)
+    })
+  }, [template?.id, template?.code])
 
   useEffect(() => {
     if (isEdit) return
@@ -182,7 +298,8 @@ export function usePageForm({ mode, editSlug }) {
     setEventDate(devPrefill.eventDate)
     setMainText(devPrefill.mainText)
     setThemeColor(devPrefill.themeColor)
-    setMusicUrl(devPrefill.musicUrl)
+    setMusicUrl(devPrefill.musicUrl || '')
+    setMusicId(devPrefill.musicId || '')
 
     if (keys.length > 0) {
       setTextByKey((prev) => {
@@ -298,6 +415,14 @@ export function usePageForm({ mode, editSlug }) {
       setFormError('Slug yalnızca küçük harf, rakam ve tire içerebilir.')
       return
     }
+    if (slugCheck.status === 'unavailable' || slugCheck.status === 'invalid') {
+      setFormError(slugCheck.message || 'Bu sayfa adresi kullanılamıyor.')
+      return
+    }
+    if (slugCheck.status === 'checking') {
+      setFormError('Sayfa adresi kontrolü bitene kadar bekleyin.')
+      return
+    }
 
     if (totalPhotoCount === 0) {
       setFormError(
@@ -311,7 +436,18 @@ export function usePageForm({ mode, editSlug }) {
       return
     }
 
+    if (giftEnabled && !giftIban.replace(/\s+/g, '').trim()) {
+      setFormError('Dijital takı açıkken IBAN numarası gerekli.')
+      return
+    }
+
+    if (locationEnabled && !locationVenueName.trim() && !locationAddress.trim()) {
+      setFormError('Konum açıkken mekan adı veya adres gerekli.')
+      return
+    }
+
     const texts = keys
+      .filter((blockKey) => pageComponents?.texts?.[blockKey] !== false)
       .map((blockKey, i) => ({
         blockKey,
         content: (textByKey[blockKey] || '').trim(),
@@ -346,7 +482,7 @@ export function usePageForm({ mode, editSlug }) {
             slug: s,
             title: t,
             eventDate: eventIso,
-            mainText: mainText.trim() || null,
+            mainText: pageComponents?.mainText === false ? null : mainText.trim() || null,
             status: nextStatus,
             isPublic: nextIsPublic,
           }),
@@ -379,7 +515,7 @@ export function usePageForm({ mode, editSlug }) {
             templateId: template.id,
             title: t,
             eventDate: eventIso,
-            mainText: mainText.trim() || null,
+            mainText: pageComponents?.mainText === false ? null : mainText.trim() || null,
             status: nextStatus,
             isPublic: nextIsPublic,
             settings: {},
@@ -441,7 +577,18 @@ export function usePageForm({ mode, editSlug }) {
         body: JSON.stringify({
           texts,
           themeColor: themeColor.trim() || null,
-          musicUrl: musicUrl.trim() || null,
+          musicUrl: pageComponents?.music === false ? null : musicId.trim() ? null : musicUrl.trim() || null,
+          musicId: pageComponents?.music === false ? null : musicId.trim() || null,
+          giftEnabled: Boolean(giftEnabled),
+          giftBankName: giftEnabled ? giftBankName.trim() || null : null,
+          giftRecipientName: giftEnabled ? giftRecipientName.trim() || null : null,
+          giftIban: giftEnabled ? giftIban.replace(/\s+/g, '').toUpperCase() || null : null,
+          locationEnabled: Boolean(locationEnabled),
+          locationVenueName: locationEnabled ? locationVenueName.trim() || null : null,
+          locationAddress: locationEnabled ? locationAddress.trim() || null : null,
+          locationLat: locationEnabled && locationLat != null ? locationLat : null,
+          locationLon: locationEnabled && locationLon != null ? locationLon : null,
+          components: serializePageComponents(pageComponents, template),
         }),
       })
       const contentBody = await contentRes.json().catch(() => ({}))
@@ -493,6 +640,7 @@ export function usePageForm({ mode, editSlug }) {
     loadingPage,
     slug,
     setSlug,
+    slugCheck,
     title,
     setTitle,
     eventDate,
@@ -503,6 +651,27 @@ export function usePageForm({ mode, editSlug }) {
     setThemeColor,
     musicUrl,
     setMusicUrl,
+    musicId,
+    setMusicId,
+    pageComponents,
+    setPageComponents,
+    toggleable,
+    giftEnabled,
+    giftBankName,
+    setGiftBankName,
+    giftRecipientName,
+    setGiftRecipientName,
+    giftIban,
+    setGiftIban,
+    locationEnabled,
+    locationVenueName,
+    setLocationVenueName,
+    locationAddress,
+    setLocationAddress,
+    locationLat,
+    setLocationLat,
+    locationLon,
+    setLocationLon,
     keys,
     textByKey,
     setTextByKey,

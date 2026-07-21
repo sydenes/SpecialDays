@@ -1,3 +1,5 @@
+import { API_BASE } from './api.js'
+
 /**
  * Müzik kaynağını çalınabilir forma dönüştürür.
  * YouTube linkleri <audio> ile çalmaz — embed gerekir.
@@ -23,5 +25,27 @@ export function parseMusicSource(raw) {
   return { type: 'audio', src: url }
 }
 
+/**
+ * Kütüphane parçası için stream URL'si.
+ * @param {string} musicId
+ */
+export function libraryMusicStreamUrl(musicId) {
+  const id = typeof musicId === 'string' ? musicId.trim() : ''
+  if (!id) return ''
+  return `${API_BASE}/api/music/${encodeURIComponent(id)}/file`
+}
+
+/**
+ * Sayfa settings → oynatıcı URL'si.
+ * musicId varsa kütüphane; yoksa özel musicUrl.
+ * @param {{ musicId?: unknown, musicUrl?: unknown } | null | undefined} settings
+ */
+export function resolvePageMusicUrl(settings) {
+  if (!settings || typeof settings !== 'object') return ''
+  const musicId = typeof settings.musicId === 'string' ? settings.musicId.trim() : ''
+  if (musicId) return libraryMusicStreamUrl(musicId)
+  return typeof settings.musicUrl === 'string' ? settings.musicUrl.trim() : ''
+}
+
 export const MUSIC_URL_HINT =
-  'YouTube veya doğrudan ses dosyası linki (ör. .mp3). YouTube sayfada gömülü oynatıcı olarak açılır.'
+  'İsterseniz YouTube veya doğrudan ses dosyası linki de ekleyebilirsiniz. Kütüphane seçimi varsa özel bağlantı yerine o kullanılır.'

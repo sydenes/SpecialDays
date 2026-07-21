@@ -1,5 +1,6 @@
 import { getStockPhotosForCategory } from '../../lib/defaultPhotos.js'
 import { stockPhotoSrc } from '../../lib/defaultPhotos.js'
+import { serializePageComponents } from '../../lib/pageComponents.js'
 
 const DEMO_COPY = {
   wedding: {
@@ -84,6 +85,17 @@ export function buildFormPreviewDraft({
   mainText,
   themeColor,
   musicUrl,
+  musicId,
+  pageComponents,
+  giftEnabled,
+  giftBankName,
+  giftRecipientName,
+  giftIban,
+  locationEnabled,
+  locationVenueName,
+  locationAddress,
+  locationLat,
+  locationLon,
   textByKey,
   keys,
   photoItems,
@@ -94,13 +106,41 @@ export function buildFormPreviewDraft({
     if (!Number.isNaN(d.getTime())) eventIso = d.toISOString()
   }
 
+  const components = serializePageComponents(pageComponents || {}, template)
+  const musicOn = components.music !== false
+  const mainOn = components.mainText !== false
+  const ibanNorm = giftIban?.replace(/\s+/g, '').toUpperCase() || ''
+  const hasLocation = Boolean(locationVenueName?.trim() || locationAddress?.trim())
+
   const page = {
     title: title.trim() || 'Sayfa başlığınız',
-    mainText: mainText.trim() || 'Karşılama metniniz burada görünecek.',
+    mainText: mainOn ? mainText.trim() || 'Karşılama metniniz burada görünecek.' : '',
     eventDate: eventIso,
     settings: {
       themeColor: themeColor?.trim() || '#c41e3a',
-      musicUrl: musicUrl?.trim() || '',
+      components,
+      ...(musicOn
+        ? musicId?.trim()
+          ? { musicId: musicId.trim() }
+          : { musicUrl: musicUrl?.trim() || '' }
+        : {}),
+      ...(giftEnabled && ibanNorm && components.gift !== false
+        ? {
+            giftEnabled: true,
+            giftBankName: giftBankName?.trim() || '',
+            giftRecipientName: giftRecipientName?.trim() || '',
+            giftIban: ibanNorm,
+          }
+        : {}),
+      ...(locationEnabled && hasLocation && components.location !== false
+        ? {
+            locationEnabled: true,
+            locationVenueName: locationVenueName?.trim() || '',
+            locationAddress: locationAddress?.trim() || '',
+            ...(locationLat != null ? { locationLat } : {}),
+            ...(locationLon != null ? { locationLon } : {}),
+          }
+        : {}),
     },
     templateConfigSchema: template?.configSchema || {},
   }
@@ -113,6 +153,7 @@ export function buildFormPreviewDraft({
   }))
 
   const texts = (keys || [])
+    .filter((blockKey) => components.texts?.[blockKey] !== false)
     .map((blockKey, i) => {
       const content = (textByKey?.[blockKey] || '').trim()
       return {

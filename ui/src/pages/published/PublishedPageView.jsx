@@ -6,6 +6,8 @@ import { formatEventDateTr } from '../../lib/eventFormat.js'
 import { photoSrc } from '../../lib/photoUrl.js'
 import { BeautyPublishedLayout } from '../beauty/BeautyPublishedLayout.jsx'
 import { PageMusicPlayer } from '../../components/PageMusicPlayer.jsx'
+import { resolvePageMusicUrl } from '../../lib/musicUrl.js'
+import { isFeatureEnabled, isTextBlockEnabled } from '../../lib/pageComponents.js'
 import {
   isLikelyBirthdayPage,
   LAYOUTS_WITH_HERO_THUMB_SWAP,
@@ -15,6 +17,11 @@ import {
   THEME_WRAP_CLASS,
 } from './publishedUtils.js'
 import { GuestMessageList } from './GuestMessageList.jsx'
+import { GuestRsvpFields } from './GuestRsvpFields.jsx'
+import { GiftIbanCard } from './GiftIbanCard.jsx'
+import { LocationCard } from './LocationCard.jsx'
+import { resolveGiftSettings } from '../../lib/giftSettings.js'
+import { resolveLocationSettings } from '../../lib/locationSettings.js'
 import '../PublicPage.css'
 
 function useCountdown(target) {
@@ -44,7 +51,11 @@ function useCountdown(target) {
 function CountdownRow({ cd, theme, compact }) {
   if (!cd) return null
   return (
-    <div className={`countdown-row ${compact ? 'countdown-row--compact' : ''}`} aria-live="polite">
+    <div
+      className={`countdown-row ${compact ? 'countdown-row--compact' : ''}`}
+      aria-live="polite"
+      data-preview-anchor="preview-countdown"
+    >
       {[
         ['Gün', cd.days],
         ['Saat', cd.hours],
@@ -72,6 +83,10 @@ function GuestBlock({
   setAuthorEmail,
   messageText,
   setMessageText,
+  attendanceStatus,
+  setAttendanceStatus,
+  guestCount,
+  setGuestCount,
   posting,
   onSubmit,
   compact,
@@ -121,6 +136,13 @@ function GuestBlock({
           disabled={previewMode}
           readOnly={previewMode}
         />
+        <GuestRsvpFields
+          attendanceStatus={attendanceStatus}
+          setAttendanceStatus={setAttendanceStatus}
+          guestCount={guestCount}
+          setGuestCount={setGuestCount}
+          disabled={previewMode}
+        />
         <textarea
           placeholder="Mesajınız"
           value={messageText}
@@ -140,7 +162,7 @@ function SaveTheDateButton({ page, theme, label, previewMode }) {
   if (!page?.eventDate) return null
   const href = buildGoogleCalendarUrl(page.title || 'Etkinlik', page.eventDate)
   return (
-    <div className="published-save-date">
+    <div className="published-save-date" data-preview-anchor="preview-save-the-date">
       <a
         href={href}
         target="_blank"
@@ -182,17 +204,23 @@ export function PublishedPageView({
   const [authorName, setAuthorName] = useState('')
   const [authorEmail, setAuthorEmail] = useState('')
   const [messageText, setMessageText] = useState('')
+  const [attendanceStatus, setAttendanceStatus] = useState('')
+  const [guestCount, setGuestCount] = useState('1')
   const [posting, setPosting] = useState(false)
   const [activeHeroIndex, setActiveHeroIndex] = useState(0)
 
-  const textsSorted = useMemo(
-    () => [...(texts || [])].sort((a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0)),
-    [texts]
-  )
+  const textsSorted = useMemo(() => {
+    const list = [...(texts || [])].sort((a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0))
+    return list.filter((t) => !t.blockKey || isTextBlockEnabled(page?.settings, t.blockKey))
+  }, [texts, page?.settings])
 
   const theme =
     (page?.settings && typeof page.settings.themeColor === 'string' && page.settings.themeColor) || '#c41e3a'
-  const musicUrl = page?.settings && typeof page.settings.musicUrl === 'string' ? page.settings.musicUrl : ''
+  const musicUrl =
+    isFeatureEnabled(page?.settings, 'music', page?.templateConfigSchema) ? resolvePageMusicUrl(page?.settings) : ''
+  const libraryMusicId =
+    page?.settings && typeof page.settings.musicId === 'string' ? page.settings.musicId.trim() : ''
+  const autoPlayLibraryMusic = Boolean(libraryMusicId) && !previewMode && !embedded && Boolean(musicUrl)
 
   const cd = useCountdown(page?.eventDate)
   const layout = page ? resolveLayout(page) : 'split-hero'
@@ -200,8 +228,12 @@ export function PublishedPageView({
   const visualTheme = resolveVisualTheme(cfg)
   const themeWrap = THEME_WRAP_CLASS[visualTheme] || THEME_WRAP_CLASS.default
 
-  const showCountdown = cfg?.components?.countdown !== false && page?.eventDate && cd
-  const showGuestbook = cfg?.components?.guestbook !== false
+  const showCountdown =
+    isFeatureEnabled(page?.settings, 'countdown', cfg) && page?.eventDate && cd
+  const showGuestbook = isFeatureEnabled(page?.settings, 'guestbook', cfg)
+  const showSaveTheDate = isFeatureEnabled(page?.settings, 'saveTheDate', cfg)
+  const showMainText = isFeatureEnabled(page?.settings, 'mainText', cfg)
+  const displayMainText = showMainText ? page?.mainText : ''
 
   useEffect(() => {
     setLocalMessages(messagesProp)
@@ -232,6 +264,22 @@ export function PublishedPageView({
       setGuestError('Lütfen isim ve mesaj girin.')
       return
     }
+    if (attendanceStatus !== 'attending' && attendanceStatus !== 'not_attending' && attendanceStatus !== 'undecided') {
+      setGuestError('Lütfen katılım durumunu seçin.')
+      return
+    }
+    let count = null
+    if (attendanceStatus === 'attending') {
+      count = Number.parseInt(String(guestCount).trim(), 10)
+      if (!Number.isFinite(count) || count < 1) {
+        setGuestError('Katılacaksanız kişi sayısı en az 1 olmalıdır.')
+        return
+      }
+      if (count > 50) {
+        setGuestError('Kişi sayısı en fazla 50 olabilir.')
+        return
+      }
+    }
     try {
       setPosting(true)
       setGuestError('')
@@ -242,18 +290,25 @@ export function PublishedPageView({
           authorName: name,
           authorEmail: authorEmail.trim() || null,
           messageText: text,
+          attendanceStatus,
+          guestCount: attendanceStatus === 'attending' ? count : null,
+          declineReason: null,
         }),
       })
       const data = await res.json().catch(() => ({}))
-      if (!res.ok) throw new Error('fail')
+      if (!res.ok) {
+        throw new Error(typeof data.error === 'string' ? data.error : 'fail')
+      }
       setMessageText('')
       setAuthorName('')
       setAuthorEmail('')
+      setAttendanceStatus('')
+      setGuestCount('1')
       setGuestSuccess(
         data.notice || 'Mesajınız alındı. Sayfa sahibi onayladıktan sonra burada görünecek.'
       )
-    } catch {
-      setGuestError('Mesaj gönderilemedi.')
+    } catch (err) {
+      setGuestError(err?.message && err.message !== 'fail' ? err.message : 'Mesaj gönderilemedi.')
       setGuestSuccess('')
     } finally {
       setPosting(false)
@@ -279,7 +334,19 @@ export function PublishedPageView({
           </div>
         ) : null}
         {musicUrl ? (
-          <PageMusicPlayer url={musicUrl} className="beauty-top-audio" variant="inline" title={`${page.title || 'Sayfa'} müziği`} />
+          <div data-preview-anchor="preview-music">
+            <PageMusicPlayer
+              url={musicUrl}
+              className="beauty-top-audio"
+              variant="inline"
+              title={`${page.title || 'Sayfa'} müziği`}
+              autoPlay={autoPlayLibraryMusic}
+            />
+          </div>
+        ) : previewMode && isFeatureEnabled(page?.settings, 'music', cfg) ? (
+          <p className="published-preview-placeholder" data-preview-anchor="preview-music">
+            Müzik seçildiğinde burada çalar
+          </p>
         ) : null}
         <BeautyPublishedLayout
           page={page}
@@ -289,6 +356,8 @@ export function PublishedPageView({
           cd={cd}
           showCountdown={showCountdown}
           showGuestbook={showGuestbook}
+          showMainText={showMainText}
+          showSaveTheDate={showSaveTheDate}
           messages={localMessages}
           guestError={guestError}
           guestSuccess={guestSuccess}
@@ -298,8 +367,13 @@ export function PublishedPageView({
           setAuthorEmail={setAuthorEmail}
           messageText={messageText}
           setMessageText={setMessageText}
+          attendanceStatus={attendanceStatus}
+          setAttendanceStatus={setAttendanceStatus}
+          guestCount={guestCount}
+          setGuestCount={setGuestCount}
           posting={posting}
           onSubmitMessage={onSubmitMessage}
+          giftSettings={page?.settings}
         />
       </div>
     )
@@ -330,13 +404,27 @@ export function PublishedPageView({
       <div className="published-premium-bg" />
 
       <main className="published-premium-shell">
-        <motion.section className="published-premium-hero" {...fadeUp}>
+        <motion.section className="published-premium-hero" {...fadeUp} data-preview-anchor="preview-hero">
           <div className="published-premium-copy">
             <p className="published-overline">{isBirthday ? 'Dogum gunun kutlu olsun' : 'Sonsuz bir aniya davetlisin'}</p>
             <h1>{page.title}</h1>
             {page.eventDate ? <p className="published-date">{formatEventDateTr(page.eventDate)}</p> : null}
-            {page.mainText ? <p className="published-main-text">{page.mainText}</p> : null}
-            {showCountdown ? <CountdownRow cd={cd} theme={theme} /> : null}
+            {displayMainText ? (
+              <p className="published-main-text" data-preview-anchor="preview-main-text">
+                {displayMainText}
+              </p>
+            ) : previewMode && showMainText ? (
+              <p className="published-main-text published-preview-placeholder" data-preview-anchor="preview-main-text">
+                Karşılama metni burada görünecek
+              </p>
+            ) : null}
+            {showCountdown ? (
+              <CountdownRow cd={cd} theme={theme} />
+            ) : previewMode && isFeatureEnabled(page?.settings, 'countdown', cfg) ? (
+              <p className="published-preview-placeholder" data-preview-anchor="preview-countdown">
+                Geri sayım (etkinlik tarihi gerekli)
+              </p>
+            ) : null}
           </div>
           <div className="published-premium-visual">
             {heroPhoto ? (
@@ -384,18 +472,39 @@ export function PublishedPageView({
         <motion.section className="published-story-card" {...fadeUp}>
           <h2>{isBirthday ? 'Bugun senin gunun' : 'Mesajimiz'}</h2>
           <div className="published-story-grid">
-            {textsSorted.length === 0 ? (
+            {textsSorted.length === 0 && !previewMode ? (
               <p className="published-story-empty">Bu sayfada henüz ek metin yok.</p>
-            ) : (
-              textsSorted.map((t) => (
-                <article key={t.id} className="published-story-item">
-                  {t.content}
-                </article>
-              ))
-            )}
+            ) : null}
+            {textsSorted.map((t) => (
+              <article
+                key={t.id}
+                className="published-story-item"
+                data-preview-anchor={t.blockKey ? `preview-text-${t.blockKey}` : undefined}
+              >
+                {t.content}
+              </article>
+            ))}
+            {previewMode
+              ? (Array.isArray(cfg.textBlocks) ? cfg.textBlocks : [])
+                  .filter((b) => b?.key && isTextBlockEnabled(page?.settings, b.key))
+                  .filter((b) => !textsSorted.some((t) => t.blockKey === b.key))
+                  .map((b) => (
+                    <article
+                      key={`ph-${b.key}`}
+                      className="published-story-item published-preview-placeholder"
+                      data-preview-anchor={`preview-text-${b.key}`}
+                    >
+                      {b.label || b.key} metni burada
+                    </article>
+                  ))
+              : null}
           </div>
-          {!isBirthday && page.eventDate ? (
+          {!isBirthday && page.eventDate && showSaveTheDate ? (
             <SaveTheDateButton page={page} theme={theme} label={saveLabel} previewMode={previewMode} />
+          ) : previewMode && showSaveTheDate ? (
+            <p className="published-preview-placeholder" data-preview-anchor="preview-save-the-date">
+              Takvime ekle butonu burada
+            </p>
           ) : null}
         </motion.section>
 
@@ -411,17 +520,48 @@ export function PublishedPageView({
         ) : null}
 
         {musicUrl ? (
-          <motion.section className="published-music-section" {...fadeUp}>
+          <motion.section className="published-music-section" {...fadeUp} data-preview-anchor="preview-music">
             <div className="published-music-visual" />
             <div className="published-music-content">
               <p>En sevdiğimiz şarkı</p>
-              <PageMusicPlayer url={musicUrl} className="published-audio" title={`${page.title || 'Sayfa'} müziği`} />
+              <PageMusicPlayer
+                url={musicUrl}
+                className="published-audio"
+                title={`${page.title || 'Sayfa'} müziği`}
+                autoPlay={autoPlayLibraryMusic}
+              />
             </div>
           </motion.section>
+        ) : previewMode && isFeatureEnabled(page?.settings, 'music', cfg) ? (
+          <p className="published-preview-placeholder" data-preview-anchor="preview-music">
+            Müzik seçildiğinde burada çalar
+          </p>
+        ) : null}
+
+        <LocationCard settings={page?.settings} />
+        {previewMode &&
+        isFeatureEnabled(page?.settings, 'location', cfg) &&
+        !resolveLocationSettings(page?.settings).enabled ? (
+          <p className="published-preview-placeholder" data-preview-anchor="preview-location">
+            Mekan adı / adres girildiğinde konum burada görünür
+          </p>
+        ) : null}
+
+        <GiftIbanCard settings={page?.settings} />
+        {previewMode &&
+        isFeatureEnabled(page?.settings, 'gift', cfg) &&
+        !resolveGiftSettings(page?.settings).enabled ? (
+          <p className="published-preview-placeholder" data-preview-anchor="preview-gift">
+            IBAN bilgileri girildiğinde dijital takı burada görünür
+          </p>
         ) : null}
 
         {showGuestbook ? (
-          <motion.section className="published-message-shell published-message-shell--split" {...fadeUp}>
+          <motion.section
+            className="published-message-shell published-message-shell--split"
+            {...fadeUp}
+            data-preview-anchor="preview-guestbook"
+          >
             <div className="published-guestbook-left">
               <div className="published-message-note">
                 <h3>{page.title} için bir not bırak</h3>
@@ -446,6 +586,10 @@ export function PublishedPageView({
               setAuthorEmail={setAuthorEmail}
               messageText={messageText}
               setMessageText={setMessageText}
+              attendanceStatus={attendanceStatus}
+              setAttendanceStatus={setAttendanceStatus}
+              guestCount={guestCount}
+              setGuestCount={setGuestCount}
               posting={posting}
               onSubmit={onSubmitMessage}
               compact

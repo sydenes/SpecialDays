@@ -20,6 +20,7 @@ import {
   getPageTemplatePhotoLimit,
   insertInlinePagePhoto,
 } from "../db/queries/pagePhotos.queries.js";
+import { getTrackById } from "../music/library.js";
 
 function getQueryParamString(req: Request, key: string): string | null {
   const v = (req.query as any)?.[key];
@@ -174,6 +175,48 @@ export async function upsertPageContent(req: Request, res: Response, next: NextF
 
     const themeColor = typeof body.themeColor === "string" ? body.themeColor.trim() : null;
     const musicUrl = typeof body.musicUrl === "string" ? body.musicUrl.trim() : null;
+    const musicIdRaw = typeof body.musicId === "string" ? body.musicId.trim() : "";
+    const musicId = musicIdRaw || null;
+    if (musicId && !getTrackById(musicId)) {
+      return res.status(400).json({ error: "Geçersiz müzik seçimi." });
+    }
+
+    const giftEnabled = body.giftEnabled === true;
+    const giftBankName =
+      typeof body.giftBankName === "string" && body.giftBankName.trim()
+        ? body.giftBankName.trim()
+        : null;
+    const giftRecipientName =
+      typeof body.giftRecipientName === "string" && body.giftRecipientName.trim()
+        ? body.giftRecipientName.trim()
+        : null;
+    const giftIbanRaw = typeof body.giftIban === "string" ? body.giftIban.replace(/\s+/g, "").toUpperCase() : "";
+    const giftIban = giftIbanRaw || null;
+    if (giftEnabled && !giftIban) {
+      return res.status(400).json({ error: "Dijital takı açıkken IBAN gerekli." });
+    }
+
+    const locationEnabled = body.locationEnabled === true;
+    const locationVenueName =
+      typeof body.locationVenueName === "string" && body.locationVenueName.trim()
+        ? body.locationVenueName.trim()
+        : null;
+    const locationAddress =
+      typeof body.locationAddress === "string" && body.locationAddress.trim()
+        ? body.locationAddress.trim()
+        : null;
+    const locationLat =
+      typeof body.locationLat === "number" && Number.isFinite(body.locationLat) ? body.locationLat : null;
+    const locationLon =
+      typeof body.locationLon === "number" && Number.isFinite(body.locationLon) ? body.locationLon : null;
+    if (locationEnabled && !locationVenueName && !locationAddress) {
+      return res.status(400).json({ error: "Konum açıkken mekan adı veya adres gerekli." });
+    }
+
+    const components =
+      body.components && typeof body.components === "object" && !Array.isArray(body.components)
+        ? (body.components as Record<string, unknown>)
+        : null;
 
     const photos = hasPhotos ? (body.photos as unknown[]) : undefined;
     const texts = hasTexts ? (body.texts as unknown[]) : undefined;
@@ -205,7 +248,18 @@ export async function upsertPageContent(req: Request, res: Response, next: NextF
       photos: normalizedPhotos,
       texts: normalizedTexts,
       themeColor,
-      musicUrl,
+      musicUrl: musicId ? null : musicUrl,
+      musicId,
+      giftEnabled,
+      giftBankName,
+      giftRecipientName,
+      giftIban,
+      locationEnabled,
+      locationVenueName,
+      locationAddress,
+      locationLat,
+      locationLon,
+      components,
     });
 
     const content = await getPageContentByPageId(id);

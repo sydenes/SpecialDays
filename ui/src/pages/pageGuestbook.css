@@ -85,6 +85,13 @@
   color: #2a2438;
 }
 
+.guestbook-admin-rsvp {
+  margin: 0 0 0.55rem;
+  font-size: 0.88rem;
+  font-weight: 600;
+  color: #5c6b4a;
+}
+
 .guestbook-admin-meta {
   margin: 0 0 0.75rem;
   display: flex;
@@ -105,3 +112,70 @@
   font-size: 0.85rem;
   color: #9a94a8;
 }
+
+.guestbook-admin-stats {
+  padding: 1.15rem 1.25rem;
+  background: #fff;
+  border: 1px solid #ece8f0;
+  border-radius: 14px;
+}
+
+.attendance-pie {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 1.25rem 1.75rem;
+}
+
+.attendance-pie--empty {
+  color: #9a94a8;
+  font-size: 0.95rem;
+}
+
+.attendance-pie--empty p {
+  margin: 0;
+}
+
+.attendance-pie-visual {
+  width: 9.5rem;
+  height: 9.5rem;
+  flex-shrink: 0;
+  border-radius: 50%;
+  border: 3px solid #fff;
+  box-shadow: 0 4px 18px rgba(42, 36, 56, 0.1);
+}
+
+.attendance-pie-info {
+  min-width: 0;
+  flex: 1 1 12rem;
+}
+
+.attendance-pie-total {
+  margin: 0 0 0.75rem;
+  font-size: 0.95rem;
+  color: #4a4454;
+}
+
+.attendance-pie-legend {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 0.45rem;
+}
+
+.attendance-pie-legend li {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  font-size: 0.9rem;
+  color: #3d3847;
+}
+
+.attendance-pie-swatch {
+  width: 0.75rem;
+  height: 0.75rem;
+  border-radius: 3px;
+  flex-shrink: 0;
+}
+

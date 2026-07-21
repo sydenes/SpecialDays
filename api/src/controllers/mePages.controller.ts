@@ -5,6 +5,7 @@ import {
   getPageByIdAdmin,
   softDeletePage,
   getPageBySlugAdmin,
+  isSlugTaken,
   listPagesByOwner,
   updatePage,
   type CreatePageInput,
@@ -23,8 +24,27 @@ import {
   deletePageMessage,
   listMessagesForPageId,
 } from "../db/queries/pageMessages.queries.js";
+import { getTrackById } from "../music/library.js";
 import { getPgUniqueConstraint } from "../utils/pgErrors.js";
 import { toPageApiResponse } from "../utils/pageResponse.js";
+
+const RESERVED_SLUGS = new Set([
+  "api",
+  "health",
+  "templates",
+  "create",
+  "edit",
+  "dashboard",
+  "published",
+  "preview",
+  "panom",
+  "giris",
+  "kayit",
+  "defter",
+  "og-preview",
+]);
+
+const SLUG_RE = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
 
 function normalizeParamToString(value: string | string[] | undefined): string | null {
   if (typeof value === "string") return value;
@@ -59,6 +79,48 @@ function stripOwnerFromPatch(body: UpdatePageInput): UpdatePageInput {
   const next = { ...body };
   delete (next as { ownerUserId?: string }).ownerUserId;
   return next;
+}
+
+export async function checkMySlugAvailability(req: AuthedRequest, res: Response, next: NextFunction) {
+  try {
+    const slugRaw = normalizeParamToString(req.params.slug);
+    const slug = slugRaw?.trim().toLowerCase() || "";
+    const excludePageId =
+      typeof req.query.excludePageId === "string" && req.query.excludePageId.trim()
+        ? req.query.excludePageId.trim()
+        : null;
+
+    if (!slug) {
+      return res.status(400).json({ available: false, reason: "empty", error: "Slug gerekli." });
+    }
+    if (!SLUG_RE.test(slug)) {
+      return res.json({
+        available: false,
+        reason: "invalid",
+        error: "Slug yalnızca küçük harf, rakam ve tire içerebilir.",
+      });
+    }
+    if (RESERVED_SLUGS.has(slug)) {
+      return res.json({
+        available: false,
+        reason: "reserved",
+        error: "Bu adres sistem tarafından ayrılmış.",
+      });
+    }
+
+    const taken = await isSlugTaken(slug, excludePageId);
+    if (taken) {
+      return res.json({
+        available: false,
+        reason: "taken",
+        error: "Bu sayfa adresi zaten kullanılıyor.",
+      });
+    }
+
+    return res.json({ available: true, reason: "ok", slug });
+  } catch (err) {
+    return next(err);
+  }
 }
 
 export async function listMyPages(req: AuthedRequest, res: Response, next: NextFunction) {
@@ -216,6 +278,48 @@ export async function upsertMyPageContent(req: AuthedRequest, res: Response, nex
 
     const themeColor = typeof body.themeColor === "string" ? body.themeColor.trim() : null;
     const musicUrl = typeof body.musicUrl === "string" ? body.musicUrl.trim() : null;
+    const musicIdRaw = typeof body.musicId === "string" ? body.musicId.trim() : "";
+    const musicId = musicIdRaw || null;
+    if (musicId && !getTrackById(musicId)) {
+      return res.status(400).json({ error: "Geçersiz müzik seçimi." });
+    }
+
+    const giftEnabled = body.giftEnabled === true;
+    const giftBankName =
+      typeof body.giftBankName === "string" && body.giftBankName.trim()
+        ? body.giftBankName.trim()
+        : null;
+    const giftRecipientName =
+      typeof body.giftRecipientName === "string" && body.giftRecipientName.trim()
+        ? body.giftRecipientName.trim()
+        : null;
+    const giftIbanRaw = typeof body.giftIban === "string" ? body.giftIban.replace(/\s+/g, "").toUpperCase() : "";
+    const giftIban = giftIbanRaw || null;
+    if (giftEnabled && !giftIban) {
+      return res.status(400).json({ error: "Dijital takı açıkken IBAN gerekli." });
+    }
+
+    const locationEnabled = body.locationEnabled === true;
+    const locationVenueName =
+      typeof body.locationVenueName === "string" && body.locationVenueName.trim()
+        ? body.locationVenueName.trim()
+        : null;
+    const locationAddress =
+      typeof body.locationAddress === "string" && body.locationAddress.trim()
+        ? body.locationAddress.trim()
+        : null;
+    const locationLat =
+      typeof body.locationLat === "number" && Number.isFinite(body.locationLat) ? body.locationLat : null;
+    const locationLon =
+      typeof body.locationLon === "number" && Number.isFinite(body.locationLon) ? body.locationLon : null;
+    if (locationEnabled && !locationVenueName && !locationAddress) {
+      return res.status(400).json({ error: "Konum açıkken mekan adı veya adres gerekli." });
+    }
+
+    const components =
+      body.components && typeof body.components === "object" && !Array.isArray(body.components)
+        ? (body.components as Record<string, unknown>)
+        : null;
 
     const photos = hasPhotos ? (body.photos as unknown[]) : undefined;
     const texts = hasTexts ? (body.texts as unknown[]) : undefined;
@@ -247,7 +351,18 @@ export async function upsertMyPageContent(req: AuthedRequest, res: Response, nex
       photos: normalizedPhotos,
       texts: normalizedTexts,
       themeColor,
-      musicUrl,
+      musicUrl: musicId ? null : musicUrl,
+      musicId,
+      giftEnabled,
+      giftBankName,
+      giftRecipientName,
+      giftIban,
+      locationEnabled,
+      locationVenueName,
+      locationAddress,
+      locationLat,
+      locationLon,
+      components,
     });
 
     const content = await getPageContentByPageId(id);

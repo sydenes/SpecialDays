@@ -1,11 +1,12 @@
 import dotenv from "dotenv";
 import { Pool } from "pg";
 import { fileURLToPath } from "url";
+import { migratePageSoftDelete } from "./src/db/migrations/pageSoftDelete.js";
+import { migratePageMessageRsvp } from "./src/db/migrations/pageMessageRsvp.js";
 import { migrateCategoriesAndAssignments } from "./src/db/migrations/categoriesAndAssignments.js";
 import { migratePagePhotosInline } from "./src/db/migrations/pagePhotosInline.js";
 import { migrateTemplateVariants } from "./src/db/migrations/templateVariants.js";
 import { migrateUserRoles } from "./src/db/migrations/userRoles.js";
-import { migratePageSoftDelete } from "./src/db/migrations/pageSoftDelete.js";
 
 dotenv.config({ path: fileURLToPath(new URL("../.env", import.meta.url)) });
 
@@ -105,6 +106,11 @@ CREATE TABLE IF NOT EXISTS page_messages (
   author_name TEXT NOT NULL,
   author_email TEXT,
   message_text TEXT NOT NULL,
+  attendance_status TEXT CHECK (
+    attendance_status IS NULL OR attendance_status IN ('attending', 'not_attending', 'undecided')
+  ),
+  guest_count INT CHECK (guest_count IS NULL OR guest_count >= 1),
+  decline_reason TEXT,
   is_approved BOOLEAN NOT NULL DEFAULT FALSE,
   approved_at TIMESTAMPTZ,
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
@@ -259,6 +265,7 @@ async function main() {
     await pool.query(SQL_SEED);
     await migrateUserRoles(pool);
     await migratePageSoftDelete(pool);
+    await migratePageMessageRsvp(pool);
     console.log("DB init tamamlandi.");
     await pool.end();
   } catch (err) {
